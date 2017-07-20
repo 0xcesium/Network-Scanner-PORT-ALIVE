@@ -1,10 +1,11 @@
 #!/usr/bin/env python2
 #-*- coding:utf-8 -*-
 #
-# --------------------
-# Author: Cs[133]
-# Twitter: @133_cesium
-# --------------------
+
+__author__='''
+[Cs133]
+Twitter: @133_cesium
+'''
 
 import paramiko
 import logging
