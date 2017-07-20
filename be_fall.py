@@ -27,7 +27,7 @@ from datetime import datetime
 from multiprocessing import Pool
 from string import digits,ascii_lowercase
 
-known_ports = [21,22,25,53,80,443]
+known_ports = [21,22,25,80,443]
 big = ascii_lowercase + digits
 online = {}
 ips_o,pwd = [],[]
