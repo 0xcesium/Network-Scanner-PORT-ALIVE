@@ -4,6 +4,8 @@
 __author__='''
 [Cs133]
 Twitter: @133_cesium
+
+<+> Under the terms of the GPL v3 License.
 '''
 
 import paramiko
