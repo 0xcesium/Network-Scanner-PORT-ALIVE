@@ -299,7 +299,7 @@ def pcap(pc):
 
 
 def get_args():
-	args = argparse.ArgumentParser(version='1.0',description='Attack Only, made by ESGI.')
+	args = argparse.ArgumentParser(version='1.0',description='Attack Only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
