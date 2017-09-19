@@ -23,12 +23,12 @@ __license__='''
 '''
 
 import sys
+import math
 import errno
 import socket
 import logging
 import scapy.route
 import scapy.config
-from math import log
 from ftplib import FTP
 import scapy.layers.l2
 from scapy.all import *
@@ -118,7 +118,7 @@ def ssh_conn(log,addr,passwd):
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("Valeur du masque illégale.", hex(arg))
-	return 32 - int(round(log(0xFFFFFFFF - arg, 2)))
+	return 32 - int(round(math.log(0xFFFFFFFF - arg, 2)))
 
 def to_CIDR_notation(bytes_network, bytes_netmask):
 	network = scapy.utils.ltoa(bytes_network)
@@ -182,11 +182,11 @@ def checkhost(ip):
 		pass
 
 def network_scan(ip):
-	mask = [255,255,255,0]
-	ipf = ip.split('.')
-	pre = [str(int(ipf[i]) & mask[i]) for i in range(len(ipf))]
+	mask 	  = [255,255,255,0]
+	ipf 	  = ip.split('.')
+	pre 	  = [str(int(ipf[i]) & mask[i]) for i in range(len(ipf))]
 	ip_reseau = pre[0] + '.' + pre[1] + '.' + pre [2] + '.'
-	relicat = 255 - int(pre[3])
+	relicat   = 255 - int(pre[3])
 	all_hosts = relicat if relicat != 255 else 255
 	return [ip_reseau + str(suffixe) for suffixe in range(int(pre[3]),all_hosts,1)]
 
@@ -292,7 +292,7 @@ def pcap(pc):
 			idx += 1
 
 def get_args():
-	args = ArgumentParser(version='1.0',description='Attack Only, made by Cesium133.')
+	args = ArgumentParser(version='1.5',description='Attack Only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
