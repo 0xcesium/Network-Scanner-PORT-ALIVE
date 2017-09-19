@@ -4,7 +4,8 @@
 __author__='''
 [Cs133]
 Twitter: @133_cesium
-
+'''
+__description__='''
 ***
 The aim of this is to discover who is online in the neightborhood of the same LAN (at the office for example...)
 And if some known ports are open and in listenning mode, we try to access them the hard way. :)
@@ -16,17 +17,18 @@ Steps:
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
 3rd: Attacking attempts by BF
 ***
-
+'''
+__license__='''
 <+> Under the terms of the GPL v3 License.
 '''
 
-import logging
-from math import log
+import sys
 import errno
 import socket
-import sys
+import logging
 import scapy.route
 import scapy.config
+from math import log
 from ftplib import FTP
 import scapy.layers.l2
 from scapy.all import *
@@ -79,6 +81,8 @@ def generate(mode,lgr):
 			elif mode == 'digits':	psswd = pwd_dig(lgr)
 			else:			psswd = pwd_big(lgr)
 			if psswd not in pwd:	pwd.append(psswd)
+			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' + len(pwd) + ' / '+ len_mode)
+			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
 				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré.\n')
