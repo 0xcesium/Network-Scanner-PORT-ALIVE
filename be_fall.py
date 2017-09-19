@@ -329,7 +329,7 @@ def get_args():
 # Entry point
 if __name__ == '__main__':
 	args = get_args()
-	user = args.username[0]
+	user = args.username
 	print '\033[94m[+]\033[0m User:', user
 	if args.ip is None:	ip = get_ip()
 	else: 			ip = args.ip[0]
