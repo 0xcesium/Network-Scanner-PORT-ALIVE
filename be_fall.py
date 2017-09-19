@@ -75,13 +75,13 @@ def generate(mode,lgr):
 	else:
 		len_mode = factorisation(big)
 	try:
-		sys.stdout.write('\n\033[94m[+]\033[0m Création aléatoire du Dictionnaire en cours...')
+		sys.stdout.write('\n\033[94m[+]\033[0m Création aléatoire du Dictionnaire en cours...\n')
 		while stop != True:
 			if mode == 'alpha':	psswd = pwd_lower(lgr)
 			elif mode == 'digits':	psswd = pwd_dig(lgr)
 			else:			psswd = pwd_big(lgr)
 			if psswd not in pwd:	pwd.append(psswd)
-			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' + len(pwd) + ' / '+ len_mode)
+			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' + str(len(pwd)) + ' / '+ str(len_mode))
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
