@@ -187,7 +187,7 @@ def network_scan(ip):
 	pre = [str(int(ipf[i]) & mask[i]) for i in range(len(ipf))]
 	ip_reseau = pre[0] + '.' + pre[1] + '.' + pre [2] + '.'
 	relicat = 255 - int(pre[3])
-	all_host = relicat if relicat != 255 else 255
+	all_hosts = relicat if relicat != 255 else 255
 	return [ip_reseau + str(suffixe) for suffixe in range(int(pre[3]),all_hosts,1)]
 
 def scanner(target):
