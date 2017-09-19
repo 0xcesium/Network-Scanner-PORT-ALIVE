@@ -57,14 +57,13 @@ def factorisation(length):
 	if length == 1: return length
 	return factorisation(length-1)*length
 
-def pwd_lower(lgr):
-	return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
-
-def pwd_dig(lgr):
-	return ''.join(digits[randint(0,len(digits)-1)] for i in range(int(lgr)))
-
-def pwd_big(lgr):
-	return ''.join(big[randint(0,len(big)-1)] for i in range(int(lgr)))
+def pwd_aplha(lgr,mode):
+	if mode == 'alpha':
+		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
+	elif mode == 'digits':
+		return ''.join(digits[randint(0,len(digits)-1)] for i in range(int(lgr)))
+	else:
+		return ''.join(big[randint(0,len(big)-1)] for i in range(int(lgr)))
 
 def generate(mode,lgr):
 	stop = False
@@ -77,10 +76,8 @@ def generate(mode,lgr):
 	try:
 		sys.stdout.write('\n\033[94m[+]\033[0m Création aléatoire du Dictionnaire en cours...\n')
 		while stop != True:
-			if mode == 'alpha':	psswd = pwd_lower(lgr)
-			elif mode == 'digits':	psswd = pwd_dig(lgr)
-			else:			psswd = pwd_big(lgr)
-			if psswd not in pwd:	pwd.append(psswd)
+			psswd = pwd_alpha(lgr,mode)
+			if psswd not in pwd: pwd.append(psswd)
 			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' + str(len(pwd)) + ' / '+ str(len_mode))
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
