@@ -45,7 +45,6 @@ big 		= ascii_lowercase + digits
 online  	= {}
 ips_o,pwd	= [],[]
 SYNACK  	= 0x12
-RSTACK  	= 0x14
 flag,ftop	= 0,0
 
 logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
