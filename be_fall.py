@@ -45,7 +45,9 @@ ips_o,pwd	= [],[]
 SYNACK  	= 0x12
 flag,ftop	= 0,0
 
-logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
+		    datefmt='%Y-%m-%d %H:%M:%S',
+		    level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
