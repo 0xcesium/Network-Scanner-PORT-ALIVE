@@ -6,7 +6,6 @@ __author__='''
 Twitter: @133_cesium
 '''
 __description__='''
-***
 The aim of this is to discover who is online in the neightborhood of the same LAN (at the office for example...)
 And if some known ports are open and in listenning mode, we try to access them the hard way. :)
 That simple.
@@ -16,7 +15,6 @@ Steps:
 1st: ARP check on LAN/24
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
 3rd: Attacking attempts by BF
-***
 '''
 __license__='''
 <+> Under the terms of the GPL v3 License.
