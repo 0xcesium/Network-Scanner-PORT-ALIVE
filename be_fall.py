@@ -78,7 +78,8 @@ def generate(mode,lgr):
 		while stop != True:
 			psswd = pwd_alpha(lgr,mode)
 			if psswd not in pwd: pwd.append(psswd)
-			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' + str(len(pwd)) + ' / '+ str(len_mode))
+			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' +
+					 str(len(pwd)) + ' / '+ str(len_mode))
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
