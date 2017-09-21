@@ -219,24 +219,23 @@ def port_scan(ip):
 	global ips_o, online
 	all_hosts = []
 	if ip == get_ip():
-		print '\033[92m[*]\033[0m Scan du réseau local.'
+		print '\n\033[92m[*]\033[0m Scan du réseau local.'
 		local_network_scan()
 		if not ips_o:
-			sys.exit('\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
+			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 	else:
 		all_hosts = network_scan(ip)
 		for host in all_hosts:
 			proc = Thread(target=checkhost,args=(host,))
 			proc.start()
-	print ips_o
 	if ips_o:
 		for ip in ips_o:
 			proc = Thread(target=scanner,args=(ip,))
 			proc.start()
 			proc.join()
 	else:
-		sys.exit('\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	print '\033[94m[+]\033[0m Résumé du scan de ports:\n', online
+		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
+	print '\n\033[94m[+]\033[0m Résumé du scan de ports:\n', online
 
 def get_ip():
 	try:
@@ -408,6 +407,9 @@ if __name__ == '__main__':
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
+					except Exception as e:
+						logger.error("\033[91m[-]\033[0m %s", e.strerror)
+			print '\n\033[94m[+]\033[0m # Job done #\n'
 		else:
 			for host in online:
 				if 80 in online[host]:
@@ -416,6 +418,7 @@ if __name__ == '__main__':
 						wrpcap(host + '-filtered.pcap', sniffed, append=True)
 					except KeyboardInterrupt:
 						wrpcap('filtered.pcap', sniffed, append=True)
+			print '\n\033[94m[+]\033[0m # Job done #\n'
 	else:
 		print '\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).'
 		sys.exit(1)
