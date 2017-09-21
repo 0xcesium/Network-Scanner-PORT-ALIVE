@@ -117,7 +117,7 @@ def ssh_conn(log,addr,passwd):
 
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
-		raise ValueError("Valeur du masque illégale.", hex(arg))
+		raise ValueError("\033[91m[-]\033[0m Valeur du masque illégale.", hex(arg))
 	return 32 - int(round(math.log(0xFFFFFFFF - arg, 2)))
 
 def to_CIDR_notation(bytes_network, bytes_netmask):
@@ -125,13 +125,13 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 	netmask = long2net(bytes_netmask)
 	net = "%s/%s" % (network, netmask)
 	if netmask < 16:
-		logger.warn("%s est trop gros." % net)
+		logger.warn("\033[91m[-]\033[0m %s est trop gros." % net)
 		return None
 	return net
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	logger.info("ARP %s sur %s" % (net, interface))
+	logger.info("\033[94m[+]\033[0m ARP %s sur %s" % (net, interface))
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=True)
 		for s, r in ans.res:
@@ -143,12 +143,12 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 			except socket.herror:
 				pass
 			except KeyboardInterrupt:
-				print '[-] L\'utilisateur a choisi l\'interruption du process.'
+				print '\033[91m[-]\033[0m L\'utilisateur a choisi l\'interruption du process.'
 				break
-			logger.info(line)
+			logger.info("\033[92m[*]\033[0m " + line)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
-			logger.error("%s. Vous n'etes pas root?", e.strerror)
+			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
 		else:
 			raise
 
@@ -160,7 +160,7 @@ def local_network_scan():
 			continue
 		net = to_CIDR_notation(network, netmask)
 		if interface != scapy.config.conf.iface:
-			logger.warn("Ignore %s car Scapy ne supporte pas ce type d'interface.", net)
+			logger.warn("\033[92m[*]\033[0m Ignore %s car Scapy ne supporte pas ce type d'interface.", net)
 			continue
 		if net:
 			scan_and_print_neighbors(net, interface)
@@ -171,11 +171,11 @@ def checkhost(ip):
 	try:
 		ping, no = sr(IP(dst=ip)/ICMP(), timeout=2)
 		if ping.res:
-			print "[*] La cible est en ligne :", ip
+			print "\033[94m[+]\033[0m La cible est en ligne :", ip
 			ips_o.append(ip)
         except socket.error as e:
                 if e.errno == errno.EPERM:
-                        logger.error("%s. Vous n'etes pas root?", e.strerror)
+                        logger.error("\033[91m[+]\033[0m %s. Vous n'etes pas root?", e.strerror)
                 else:
                         pass
 	except Exception:
@@ -200,7 +200,7 @@ def scanner(target):
         		SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
         		pktflags = SYNACKpkt.getlayer(TCP).flags
         		if pktflags == SYNACK:
-				print '[+] Port Ouvert :', port, 'sur la cible --> ', target
+				print '\033[94m[+]\033[0m Port Ouvert :', port, 'sur la cible --> ', target
 				ports_i.append(port)
 	 		else:
 	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
@@ -208,7 +208,7 @@ def scanner(target):
 		except KeyboardInterrupt:
 			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 			send(RSTpkt)
-			print "\n[*] La requete de l'utilisateur s'est stoppée..."
+			print "\n\033[92m[*]\033[0m La requete de l'utilisateur s'est stoppée..."
 		except Exception as e:
 			print e
 	online[target] = ports_i
@@ -217,7 +217,7 @@ def port_scan(ip):
 	global ips_o, online
 	all_hosts = []
 	if ip == get_ip():
-		print '[*] Scan du réseau local.'
+		print '\033[92m[*]\033[0m Scan du réseau local.'
 		local_network_scan()
 		if not ips_o:
 			sys.exit('\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
@@ -356,17 +356,17 @@ if __name__ == '__main__':
 			print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 			sys.exit(-1)
 	elif args.mode is not None:
-		print "[*] Mode:", args.mode[0]
+		print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
 		print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
-		print "[*] Longueur des lignes:", args.longueur[0]
-		print "[*] Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
+		print "\033[92m[*]\033[0m  Longueur des lignes:", args.longueur[0]
+		print "\033[92m[*]\033[0m  Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
 		dic = generate(args.mode[0], args.longueur[0])
 	else:
 		online = []
-		print '[-] Online est vidé.'
+		print '\033[91m[-]\033[0m Online est vidé.'
 
 	if not online:
-		sys.exit('[-] Online est vide après le scan de port.\n')
+		sys.exit('\033[91m[-]\033[0m Online est vide après le scan de port.\n')
 
 	if online:
 		if args.bruteforce:
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
 					except Exception as e:
-						logger.error("[-] %s", e.strerror)
+						logger.error("\033[91m[-]\033[0m %s", e.strerror)
 
 			for host in online:
 				if 22 in online[host]:
