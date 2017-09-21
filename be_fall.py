@@ -263,14 +263,14 @@ def pcap(pc):
         	pcap = rdpcap(pc)
         	p = pcap.sessions()
     	except IOError:
-        	sys.exit(red + "[-] " + nat + "IOError.")
+        	sys.exit("\033[91m[-]\033[0m IOError.")
     	for session in p:
         	idx, flag = 0, 0
         	concat = ''
         	print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
         	for pkt in p[session]:
         		if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
-                		print red, '\nPacket %d -------------- Nouveau Payload -------------\n\n' % idx, nat
+                		print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
                 		payload = pkt[TCP].payload
                 		load = pkt[TCP].load
                 		headers = get_http_headers(load)
