@@ -96,7 +96,8 @@ def detonate(log,addr,psswd):
 		trig.quit()
 		if "successful" in ret:
 			ftop = 1
-			sys.stdout.write('\n\n\n\033[94m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
+			sys.stdout.write('\n\n\033[94m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
+			sys.exit(0)
 	except:
 		trig.close()
 
@@ -110,7 +111,8 @@ def ssh_conn(log,addr,passwd):
 			password=psswd,
 			timeout=10,
 			look_for_keys=False)
-		print '\n\n\n\033[94m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
+		print '\n\n\033[94m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
+		sys.exit(0)
 		flag = 1
 	except:
 		pass
