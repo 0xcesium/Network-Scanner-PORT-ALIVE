@@ -237,11 +237,14 @@ def port_scan(ip):
 	print '\033[94m[+]\033[0m Résumé du scan de ports:\n', online
 
 def get_ip():
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.connect(("8.8.8.8",80))
-	ret = s.getsockname()[0]
-	s.close()
-	return ret
+	try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8",80))
+                ret = s.getsockname()[0]
+                s.close()
+                return ret
+        except:
+                sys.exit('\033[91m[-]\033[0m Déconnecté du réseau?\n')
 
 def get_http_headers(http_payload):
 	try:
