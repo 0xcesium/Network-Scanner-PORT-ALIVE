@@ -38,7 +38,7 @@ from argparse import ArgumentParser
 from string import digits,ascii_lowercase
 from paramiko import SSHClient, AutoAddPolicy
 
-known_ports 	= [21,22,25,80,443]
+known_ports 	= [21,22,25,80,443,445,8080,8000]
 big 		= ascii_lowercase + digits
 online  	= {}
 ips_o,pwd	= [],[]
@@ -135,7 +135,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
 	logger.info("\033[94m[+]\033[0m ARP %s sur %s" % (net, interface))
 	try:
-		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=True)
+		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
 			line = r.sprintf("%Ether.src%  %ARP.psrc%")
 			ips_o.append(line.split(' ')[2])
@@ -210,7 +210,7 @@ def scanner(target):
 		except KeyboardInterrupt:
 			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 			send(RSTpkt)
-			print "\n\033[92m[*]\033[0m La requete de l'utilisateur s'est stoppée..."
+			print "\n\033[92m[*]\033[0m La requete s'est stoppée sur demande utilisateur."
 		except Exception as e:
 			print e
 	online[target] = ports_i
@@ -219,20 +219,21 @@ def port_scan(ip):
 	global ips_o, online
 	all_hosts = []
 	if ip == get_ip():
-		print '\n\033[92m[*]\033[0m Scan du réseau local.'
+		print '\n\033[92m[*]\033[0m Scan du réseau local:'
 		local_network_scan()
 		if not ips_o:
 			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 	else:
+		print '\n\033[92m[*]\033[0m Scan du réseau distant:'
 		all_hosts = network_scan(ip)
 		for host in all_hosts:
 			proc = Thread(target=checkhost,args=(host,))
 			proc.start()
 	if ips_o:
+		print '\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:'
 		for ip in ips_o:
 			proc = Thread(target=scanner,args=(ip,))
 			proc.start()
-			proc.join()
 	else:
 		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 	print '\n\033[94m[+]\033[0m Résumé du scan de ports:\n', online
@@ -335,8 +336,7 @@ if __name__ == '__main__':
 	args = get_args()
 	user = args.username
 	print '\033[94m[+]\033[0m User:', user
-	if args.ip is None:	ip = get_ip()
-	else: 			ip = args.ip[0]
+	ip = get_ip() if args.ip is None else args.ip[0]
 	print '\033[94m[+]\033[0m IP:', ip
 
 #	from multiprocessing import Pool
