@@ -367,10 +367,7 @@ if __name__ == '__main__':
 		dic = generate(args.mode[0], args.longueur[0])
 	else:
 		online = []
-		print '\033[91m[-]\033[0m Online est vidé.'
-
-	if not online:
-		sys.exit('\033[91m[-]\033[0m Online est vide après le scan de port.\n')
+		print '\033[91m[-]\033[0m Online est vide après le scan de port.\n'
 
 	if online:
 		if args.bruteforce:
@@ -420,5 +417,4 @@ if __name__ == '__main__':
 						wrpcap('filtered.pcap', sniffed, append=True)
 			print '\n\033[94m[+]\033[0m # Job done #\n'
 	else:
-		print '\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).'
-		sys.exit(1)
+		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
