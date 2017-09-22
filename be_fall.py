@@ -303,7 +303,8 @@ def pcap(pc, protocol):
 						print payload
 				idx += 1
 		elif protocol == 'dns':
-			
+			#TODO
+			pass
 
 def get_args():
 	args = ArgumentParser(version='1.5',description='Attack Only, made by Cesium133.')
