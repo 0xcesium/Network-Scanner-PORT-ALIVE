@@ -186,7 +186,8 @@ def checkhost(ip):
                         logger.error("\033[91m[+]\033[0m %s. Vous n'etes pas root?", e.strerror)
                 else:
                         pass
-	except Exception:
+	except Exception as e:
+		logger.error("\033[91m[+]\033[0m %s.", e.strerror)
 		pass
 
 def network_scan(ip):
@@ -331,17 +332,17 @@ def get_args():
 	args.add_argument('-u','--username',
 		action='store',
 		nargs=1,
-		default='admin',
+		default=['admin'],
 		help='Username distant à BF.')
 	args.add_argument('-m','--mode',
 		action='store',
 		nargs=1,
-		default='alpha',
+		default=['alpha'],
 		help='Alphabet de bruteforce [alpha|digits|big].')
 	args.add_argument('-l','--longueur',
 		action='store',
 		nargs=1,
-		default='3',
+		default=['3'],
 		help='Longueur des mots de passe souhaitée.')
 	args.add_argument('-r','--rdpcap',
 		action='store',
@@ -350,7 +351,7 @@ def get_args():
 	args.add_argument('-p','--protocol',
 		action='store',
 		nargs=1,
-		default='http',
+		default=['http'],
 		help='Protocole à analyser.')
 	return args.parse_args()
 
@@ -358,7 +359,7 @@ def get_args():
 # Entry point
 if __name__ == '__main__':
 	args = get_args()
-	user = args.username
+	user = args.username[0]
 	print '\033[94m[+]\033[0m User:', user
 	ip = get_ip() if args.ip is None else args.ip[0]
 	print '\033[94m[+]\033[0m IP:', ip
@@ -385,7 +386,7 @@ if __name__ == '__main__':
 				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 				sys.exit(-1)
 		else:
-			print "\n\033[92m[*]\033[0m Mode:", args.mode
+			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
 			print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
