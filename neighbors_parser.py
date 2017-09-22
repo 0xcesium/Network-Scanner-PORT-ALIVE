@@ -53,10 +53,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 
-def factorisation(length):
-	if length == 1: return length
-	return factorisation(length-1)*length
-
 def pwd_alpha(lgr, mode):
 	if mode == 'alpha':
 		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
@@ -68,11 +64,11 @@ def pwd_alpha(lgr, mode):
 def generate(mode, lgr):
 	stop = False
 	if mode == 'alpha':
-		len_mode = factorisation(len(ascii_lowercase))
+		len_mode = pow(len(ascii_lowercase), 3)
 	elif mode == 'digits':
-		len_mode = factorisation(len(digits))
+		len_mode = pow(len(digits), 3)
 	else:
-		len_mode = factorisation(len(big))
+		len_mode = pow(len(big), 3)
 	try:
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
@@ -82,7 +78,7 @@ def generate(mode, lgr):
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
-				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré.\n')
+				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré en totalité.\n')
 	except KeyboardInterrupt:
 		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n\n' % len(pwd))
 		return pwd
