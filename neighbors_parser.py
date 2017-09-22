@@ -124,10 +124,10 @@ def query(port, dst):
     		r = requests.get(url, headers=headers, cookie=cookie)
  	return uploaded_pkt
 
-def smb_query(dst):
+def smb_query(dest):
 	payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
 	def smb_pkt(packet):
-		send(IP(dst=dst)/TCP(dport=445)/Raw=payload)
+		send(IP(dst=dest)/TCP(dport=445)/Raw=payload)
 	return smb_pkt
 	
 def long2net(arg):
