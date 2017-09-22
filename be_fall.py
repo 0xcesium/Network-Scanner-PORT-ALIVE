@@ -337,6 +337,11 @@ def get_args():
 		action='store',
 		nargs=1,
 		help='Analyse un pcap pour déceler les requetes HTTP.')
+	args.add_argument('-p','--protocol',
+		action='store',
+		nargs=1,
+		default='http',
+		help='Protocol à analyser.')
 	return args.parse_args()
 
 
@@ -354,7 +359,7 @@ if __name__ == '__main__':
 #		pool.map(detonate,dico,4)
 
 	if args.rdpcap is not None:
-		pcap(args.pcap[0])
+		pcap(args.pcap[0], args.protocol[0])
 		sys.exit(0)
 
 	ips = network_scan(ip)
