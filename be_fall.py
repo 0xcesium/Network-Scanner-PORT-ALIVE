@@ -264,7 +264,7 @@ def get_http_headers(http_payload):
         	return None
     	return headers
 
-def pcap(pc, protocol.lower()):
+def pcap(pc, protocol):
     	try:
         	pcap = rdpcap(pc)
         	p = pcap.sessions()
@@ -359,7 +359,7 @@ if __name__ == '__main__':
 #		pool.map(detonate,dico,4)
 
 	if args.rdpcap is not None:
-		pcap(args.pcap[0], args.protocol[0])
+		pcap(args.pcap[0], args.protocol[0].lower())
 		sys.exit(0)
 
 	ips = network_scan(ip)
