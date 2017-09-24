@@ -39,7 +39,7 @@ from argparse import ArgumentParser
 from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
-known_ports 	= [21,22,25,80,443,445,8080,8000]
+known_ports 	= [21,22,2222,25,80,443,445,8080,8000]
 letters_digits  = digits + letters
 all		= digits + letters + punctuation
 online  	= {}
@@ -334,7 +334,7 @@ def pcap(pc, protocol):
 			pass
 
 def get_args():
-	args = ArgumentParser(version='1.5',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='2.1',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
