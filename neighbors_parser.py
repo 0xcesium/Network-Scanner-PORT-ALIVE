@@ -467,28 +467,12 @@ if __name__ == '__main__':
 					page = query(item, host)
 					with open('HTTP-' + host + '-page.html','w') as f:
 						f.write(page)
-#					sniffed = sniff(prn=query(item, host),
-#							filter="tcp and port " + str(item) + " and host " + host,
-#							count=25)
-#					sniffed.nsummary()
-#					try:
-#						wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
-#					except:
-#						pass
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
 				print "\n\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
 				page = query(443, host)
 				with open('HTTPS-' + host + '-page.html','w') as f:
 					f.write(page)
-#				sniffed = sniff(prn=query(443, host),
-#						filter="tcp and port 443 and host " + host,
-#						count=25)
-#				sniffed.nsummary()
-#				try:
-#					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
-#				except:
-#					pass
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
