@@ -355,7 +355,7 @@ def get_args():
 	args.add_argument('-m','--mode',
 		action='store',
 		nargs=1,
-		default=['alpha'],
+		default=['lower'],
 		help='Alphabet de bruteforce [lower | upper | digits | letters+digits | hex | all].')
 	args.add_argument('-l','--longueur',
 		action='store',
