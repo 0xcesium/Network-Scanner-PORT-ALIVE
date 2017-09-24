@@ -36,11 +36,12 @@ from random import randint
 from threading import Thread
 from datetime import datetime
 from argparse import ArgumentParser
-from string import digits,ascii_lowercase
 from paramiko import SSHClient, AutoAddPolicy
+from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
 known_ports 	= [21,22,25,80,443,445,8080,8000]
-big 		= ascii_lowercase + digits
+letters_digits  = digits + letters
+all		= digits + letters + punctuation
 online  	= {}
 ips_o,pwd	= [],[]
 SYNACK  	= 0x12
@@ -54,21 +55,33 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 
 def pwd_alpha(lgr, mode):
-	if mode == 'alpha':
+	if mode == 'lower':
 		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
+	elif mode == 'upper':
+		return ''.join(uppercase[randint(0,len(uppercase)-1)] for i in range(int(lgr)))
 	elif mode == 'digits':
 		return ''.join(digits[randint(0,len(digits)-1)] for i in range(int(lgr)))
+	elif mode == 'hex':
+		return ''.join(hexdigits[randint(0,len(hexdigits)-1)] for i in range(int(lgr)))
+	elif mode == 'all':
+		return ''.join(all[randint(0,len(all)-1)] for i in range(int(lgr)))
 	else:
-		return ''.join(big[randint(0,len(big)-1)] for i in range(int(lgr)))
+		return ''.join(letters_digits[randint(0,len(letters_digits)-1)] for i in range(int(lgr)))
 
 def generate(mode, lgr):
 	stop = False
-	if mode == 'alpha':
+	if mode == 'lower':
 		len_mode = pow(len(ascii_lowercase), int(lgr))
+	elif mode == 'upper':
+		len_mode = pow(len(uppercase), int(lgr))
 	elif mode == 'digits':
 		len_mode = pow(len(digits), int(lgr))
+	elif mode == 'hex':
+		len_mode = pow(len(hexdigits), int(lgr))
+	elif mode == 'all':
+		len_mode = pow(len(all), int(lgr))
 	else:
-		len_mode = pow(len(big), int(lgr))
+		len_mode = pow(len(lc_digits), int(lgr))
 	try:
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
@@ -343,7 +356,7 @@ def get_args():
 		action='store',
 		nargs=1,
 		default=['alpha'],
-		help='Alphabet de bruteforce [alpha|digits|big].')
+		help='Alphabet de bruteforce [lower | upper | digits | letters+digits | hex | all].')
 	args.add_argument('-l','--longueur',
 		action='store',
 		nargs=1,
@@ -392,7 +405,7 @@ if __name__ == '__main__':
 				sys.exit(-1)
 		else:
 			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
-			print "\033[94m[+]\033[0m Generation du dictionnaire (100.000 elements max)."
+			print "\033[94m[+]\033[0m Generation du dictionnaire."
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
@@ -454,12 +467,28 @@ if __name__ == '__main__':
 					page = query(item, host)
 					with open('HTTP-' + host + '-page.html','w') as f:
 						f.write(page)
+#					sniffed = sniff(prn=query(item, host),
+#							filter="tcp and port " + str(item) + " and host " + host,
+#							count=25)
+#					sniffed.nsummary()
+#					try:
+#						wrpcap('HTTP-' + host + '-filtered.pcap', sniffed, append=True)
+#					except:
+#						pass
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
 				print "\n\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
 				page = query(443, host)
 				with open('HTTPS-' + host + '-page.html','w') as f:
 					f.write(page)
+#				sniffed = sniff(prn=query(443, host),
+#						filter="tcp and port 443 and host " + host,
+#						count=25)
+#				sniffed.nsummary()
+#				try:
+#					wrpcap('HTTPS-' + host + '-filtered.pcap', sniffed, append=True)
+#				except:
+#					pass
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
