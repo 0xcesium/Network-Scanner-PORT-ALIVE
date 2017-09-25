@@ -404,7 +404,7 @@ if __name__ == '__main__':
 	if args.bruteforce and bf_ok:
 		if args.wordlist is not None:
 			try:
-				print "\033[94m[+]\033[0m Prise en compte de la wordlist:", args.wordlist[0]
+				print_fmt("\033[94m[+]\033[0m Prise en compte de la wordlist: " + args.wordlist[0])
 				with open(args.wordlist[0],'rb') as wl:
 					dic = wl.read().replace('\r','').split('\n')
 			except:
