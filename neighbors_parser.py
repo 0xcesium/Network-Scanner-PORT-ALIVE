@@ -411,8 +411,8 @@ if __name__ == '__main__':
 				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 				sys.exit(-1)
 		else:
+			print_fmt("\033[94m[+]\033[0m Generation du dictionnaire.")
 			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
-			print "\033[94m[+]\033[0m Generation du dictionnaire."
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
