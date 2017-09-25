@@ -137,6 +137,12 @@ def query(port, dst):
 	logger.info("\033[92m[*]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
  	return r.text.encode('utf-8')
 
+def generate_smb_proto_payload(*protos):
+	hexdata = []
+	for proto in protos:
+		hexdata.extend(proto)
+	return "".join(hexdata)
+
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("\033[91m[-]\033[0m Valeur du masque illégale.", hex(arg))
@@ -482,10 +488,26 @@ if __name__ == '__main__':
 # SMB ----------------------------------------------------------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
-				payload = "\x00\x00\x001\xffSMB+\x00\x00\x00\x00\x18C\xc0"+\
-                                          "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe"+\
-                                          "\x00\x00\xfe\xff\x01\x01\x00\x0c\x00JlJmIhClBsr\x00"
-                                packet = IP(dst=host)/TCP(dport=445)/Raw(load=payload)
+				srcport = randint(20000,40000)
+				netbios    = [	"\x00",					# message type
+						"\x00\x00\x31" ]			# length
+				smb_header = [	"\xff\x53\x4d\x42",			# server_component : ".SMB"
+						"\x2b",					# smb_command : ????
+						"\x00\x00\x00\x00",			# nt_status
+						"\x18",					# flags1
+						"\x43\xc0",				# flags2
+						"\x00\x00",				# process_id_high
+						"\x00\x00\x00\x00\x00\x00\x00\x00",	# signature
+						"\x00\x00",				# reserved
+						"\xff\xff",				# tree_id
+						"\xff\xfe",				# process_id
+                                        	"\x00\x00",				# user_id
+						"\xfe\xff" ]				# multiplex_id
+				request    = [	"\x01",					# Word Count
+						"\x01\x00",				# byte_count
+						"\x0c\x00\x4a\x6c\x4a\x6d\x49\x68\x43\x6c\x42\x73\x72\x00" ]
+				payload = generate_smb_proto_payload(netbios, smb_header, request)
+                                packet = IP(dst=host)/TCP(sport=srcport, dport=445)/Raw(load=payload)
                                 sniffed, unans = sr(packet, timeout=1.5, verbose=0, multi=True)
 				sniffed.nsummary()
 				try:
