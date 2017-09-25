@@ -20,16 +20,9 @@ __license__='''
 <+> Under the terms of the GPL v3 License.
 '''
 
-import sys
-import math
-import errno
-import socket
-import logging
-import requests
-import scapy.route
-import scapy.config
+import sys, math, errno, socket, logging, requests
+import scapy.route, scapy.config, scapy.layers.l2
 from ftplib import FTP
-import scapy.layers.l2
 from scapy.all import *
 from random import randint
 from threading import Thread
