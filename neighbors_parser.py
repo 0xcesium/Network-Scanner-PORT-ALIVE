@@ -20,8 +20,9 @@ __license__='''
 <+> Under the terms of the GPL v3 License.
 '''
 
-import sys, math, errno, socket, logging, requests
+
 import scapy.route, scapy.config, scapy.layers.l2
+import sys, math, errno, socket, logging, requests, struct
 from ftplib import FTP
 from scapy.all import *
 from random import randint
@@ -38,17 +39,19 @@ ips_o,pwd	= [],[]
 SYNACK  	= 0x12
 flag,ftop	= 0,0
 bf_ok		= False
+buffersize	= 1024
 
 logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
-		    datefmt='%Y-%m-%d %H:%M:%S',
-		    level=logging.DEBUG)
+			datefmt='%Y-%m-%d %H:%M:%S',
+			level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 
+# BF part ==========================================================================================
 def print_fmt(sentence):
 	lgth = len(sentence)
-	print sentence + '\n' + '-'*(lgth-9)
+	print sentence + '\n' + '-'*(lgth-10)
 
 def pwd_alpha(lgr, mode):
 	if mode == 'lower':
@@ -125,6 +128,7 @@ def ssh_conn(log, addr, passwd, essai, port):
 	except:
 		pass
 
+# HTTP / HTTPS part ==============================================================================	
 def query(port, dst):
 	if port == 443:
 		url = 'https://{}'.format(dst)
@@ -135,14 +139,251 @@ def query(port, dst):
 	headers = {'content-type':'application/json'}
 	r = requests.get(url, headers=headers, verify=False)
 	logger.info("\033[92m[*]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
- 	return r.text.encode('utf-8')
+	return r.text.encode('utf-8')
 
+# SMB part =======================================================================================
 def generate_smb_proto_payload(*protos):
 	hexdata = []
 	for proto in protos:
 		hexdata.extend(proto)
 	return "".join(hexdata)
 
+'''
+SMB_HEADER architecture:
+	"server_component : 04x"
+	"smb_command      : 01x"
+	"error_class      : 01x"
+	"error_code       : 02x"
+	"flags            : 01x"
+	"flags2           : 02x"
+	"process_id_high  : 02x"
+	"signature        : 08x"
+	"reserved2        : 02x"
+	"tree_id          : 02x"
+	"process_id       : 02x"
+	"user_id          : 02x"
+	"multiplex_id     : 02x"
+'''
+
+def calculate_doublepulsar_xor_key(s):
+	"""Calculate Doublepulsar Xor Key
+	"""
+	x = (2 * s ^ (((s & 0xff00 | (s << 16)) << 8) | (((s >> 16) | s & 0xff0000) >> 8)))
+	x = x & 0xffffffff  # this line was added just to truncate to 32 bits
+	return x
+
+def negotiate_proto_request():
+	"""Generate a negotiate_proto_request packet.
+	"""
+	logger.debug("Generate negotiate request")
+	netbios = [
+			'\x00',				# 'Message_Type'
+		   	'\x00\x00\x54']		# 'Length'
+	smb_header = [
+			'\xFF\x53\x4D\x42',	# 'server_component': .SMB
+			'\x72',				# 'smb_command': Negotiate Protocol
+			'\x00\x00\x00\x00',	# 'nt_status'
+			'\x18',				# 'flags'
+			'\x01\x28',			# 'flags2'
+			'\x00\x00',			# 'process_id_high'
+			'\x00\x00\x00\x00\x00\x00\x00\x00',  # 'signature'
+			'\x00\x00',			# 'reserved'
+			'\x00\x00',			# 'tree_id'
+			'\x2F\x4B',			# 'process_id'
+			'\x00\x00',			# 'user_id'
+			'\xC5\x5E']			# 'multiplex_id'
+	negotiate_proto_request = [
+			'\x00',				# 'word_count'
+			'\x31\x00',			# 'byte_count'
+			# Requested Dialects
+			'\x02',				# 'dialet_buffer_format'
+			'\x4C\x41\x4E\x4D\x41\x4E\x31\x2E\x30\x00',   # 'dialet_name': LANMAN1.0
+			'\x02',				# 'dialet_buffer_format'
+			'\x4C\x4D\x31\x2E\x32\x58\x30\x30\x32\x00',   # 'dialet_name': LM1.2X002
+			'\x02',				# 'dialet_buffer_format'
+			'\x4E\x54\x20\x4C\x41\x4E\x4D\x41\x4E\x20\x31\x2E\x30\x00',  # 'dialet_name3': NT LANMAN 1.0
+			'\x02',				# 'dialet_buffer_format'
+			'\x4E\x54\x20\x4C\x4D\x20\x30\x2E\x31\x32\x00']   # 'dialet_name4': NT LM 0.12
+	return generate_smb_proto_payload(netbios, smb_header, negotiate_proto_request)
+
+def session_setup_andx_request():
+	"""Generate session setuo andx request.
+	"""
+	logger.debug("Generate session setup andx request")
+	netbios = [
+			'\x00',				# 'Message_Type'
+			'\x00\x00\x63']		# 'Length'
+	smb_header = [
+			'\xFF\x53\x4D\x42',	# 'server_component': .SMB
+			'\x73',				# 'smb_command': Session Setup AndX
+			'\x00\x00\x00\x00', # 'nt_status'
+			'\x18',				# 'flags'
+			'\x01\x20',			# 'flags2'
+			'\x00\x00',			# 'process_id_high'
+			'\x00\x00\x00\x00\x00\x00\x00\x00',  # 'signature'
+			'\x00\x00',			# 'reserved'
+			'\x00\x00',			# 'tree_id'
+			'\x2F\x4B',			# 'process_id'
+			'\x00\x00',			# 'user_id'
+			'\xC5\x5E']			# 'multiplex_id'
+	session_setup_andx_request = [
+			'\x0D',				# Word Count
+			'\xFF',				# AndXCommand: No further command
+			'\x00',				# Reserved
+			'\x00\x00',			# AndXOffset
+			'\xDF\xFF',			# Max Buffer
+			'\x02\x00',			# Max Mpx Count
+			'\x01\x00',			# VC Number
+			'\x00\x00\x00\x00', # Session Key
+			'\x00\x00',			# ANSI Password Length
+			'\x00\x00',			# Unicode Password Length
+			'\x00\x00\x00\x00', # Reserved
+			'\x40\x00\x00\x00', # Capabilities
+			'\x26\x00',			# Byte Count
+			'\x00',				# Account
+			'\x2e\x00',			# Primary Domain
+			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x32\x31\x39\x35\x00',		# Native OS: Windows 2000 2195
+			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x35\x2e\x30\x00']			# Native OS: Windows 2000 5.0
+	return generate_smb_proto_payload(netbios, smb_header, session_setup_andx_request)
+
+def tree_connect_andx_request(ip,userid):
+	"""Generate tree connect andx request.
+	"""
+	logger.debug("Generate tree connect andx request")
+	netbios = [
+			'\x00',				# 'Message_Type'
+			'\x00\x00\x47']		# 'Length'
+	smb_header = [
+			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\x75',				# 'smb_command': Tree Connect AndX
+			'\x00\x00\x00\x00', # 'nt_status'
+			'\x18',				# 'flags'
+			'\x01\x20',			# 'flags2'
+			'\x00\x00',			# 'process_id_high'
+			'\x00\x00\x00\x00\x00\x00\x00\x00',  # 'signature'
+			'\x00\x00',			# 'reserved'
+			'\x00\x00',			# 'tree_id'
+			'\x2F\x4B',			# 'process_id'
+			userid,				# 'user_id'
+			'\xC5\x5E']			# 'multiplex_id'
+	ipc = "\\\\{}\IPC$\x00".format(ip)
+	logger.debug("Connecting to {} with UID = {}".format(ipc, userid))
+	tree_connect_andx_request = [
+			'\x04',				# Word Count
+			'\xFF',				# AndXCommand: No further commands
+			'\x00',				# Reserved
+			'\x00\x00',			# AndXOffset
+			'\x00\x00',			# Flags
+			'\x01\x00',			# Password Length
+			'\x1A\x00',			# Byte Count
+			'\x00',				# Password
+			ipc.encode(),		# \\xxx.xxx.xxx.xxx\IPC$
+			'\x3f\x3f\x3f\x3f\x3f\x00']   # Service
+	length = len("".join(smb_header)) + len("".join(tree_connect_andx_request))
+	netbios[1] = struct.pack(">L", length)[-3:]
+	return generate_smb_proto_payload(netbios, smb_header, tree_connect_andx_request)
+
+def peeknamedpipe_request(treeid, processid, userid, multiplex_id):
+	"""Generate tran2 request
+	"""
+	logger.debug("Generate peeknamedpipe request")
+	netbios = [
+			'\x00',				# 'Message_Type'
+			'\x00\x00\x4a']		# 'Length'
+	smb_header = [
+			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\x25',				# 'smb_command': Trans2
+			'\x00\x00\x00\x00', # 'nt_status'
+			'\x18',				# 'flags'
+			'\x01\x28',			# 'flags2'
+			'\x00\x00',			# 'process_id_high'
+			'\x00\x00\x00\x00\x00\x00\x00\x00',  # 'signature'
+			'\x00\x00',			# 'reserved'
+			treeid,
+			processid,
+			userid,
+			multiplex_id]
+	tran_request = [
+			'\x10',				# Word Count
+			'\x00\x00',			# Total Parameter Count
+			'\x00\x00',			# Total Data Count
+			'\xff\xff',			# Max Parameter Count
+			'\xff\xff',			# Max Data Count
+			'\x00',				# Max Setup Count
+			'\x00',				# Reserved
+			'\x00\x00',			# Flags
+			'\x00\x00\x00\x00', # Timeout: Return immediately
+			'\x00\x00',			# Reversed
+			'\x00\x00',			# Parameter Count
+			'\x4a\x00',			# Parameter Offset
+			'\x00\x00',			# Data Count
+			'\x4a\x00',			# Data Offset
+			'\x02',				# Setup Count
+			'\x00',				# Reversed
+			'\x23\x00',			# SMB Pipe Protocol: Function: PeekNamedPipe (0x0023)
+			'\x00\x00',			# SMB Pipe Protocol: FID
+			'\x07\x00',
+			'\x5c\x50\x49\x50\x45\x5c\x00']  # \PIPE\
+	return generate_smb_proto_payload(netbios, smb_header, tran_request)
+
+def trans2_request(treeid, processid, userid, multiplex_id):
+	"""Generate trans2 request.
+	"""
+	logger.debug("Generate tran2 request")
+	netbios = [
+			'\x00',				# 'Message_Type'
+			'\x00\x00\x4f']		# 'Length'
+	smb_header = [
+			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\x32',				# 'smb_command': Trans2
+			'\x00\x00\x00\x00', # 'nt_status'
+			'\x18',				# 'flags'
+			'\x07\xc0',			# 'flags2'
+			'\x00\x00',			# 'process_id_high'
+			'\x00\x00\x00\x00\x00\x00\x00\x00',  # 'signature'
+			'\x00\x00',			# 'reserved'
+			treeid,
+			processid,
+			userid,
+			multiplex_id]
+	trans2_request = [
+			'\x0f',				# Word Count
+			'\x0c\x00',			# Total Parameter Count
+			'\x00\x00',			# Total Data Count
+			'\x01\x00',			# Max Parameter Count
+			'\x00\x00',			# Max Data Count
+			'\x00',				# Max Setup Count
+			'\x00',				# Reserved
+			'\x00\x00',			# Flags
+			'\xa6\xd9\xa4\x00', # Timeout: 3 hours, 3.622 seconds
+			'\x00\x00',			# Reversed
+			'\x0c\x00',			# Parameter Count
+			'\x42\x00',			# Parameter Offset
+			'\x00\x00',			# Data Count
+			'\x4e\x00',			# Data Offset
+			'\x01',				# Setup Count
+			'\x00',				# Reserved
+			'\x0e\x00',			# subcommand: SESSION_SETUP
+			'\x00\x00',			# Byte Count
+			'\x0c\x00' + '\x00' * 12]
+	return generate_smb_proto_payload(netbios, smb_header, trans2_request)
+
+def conn(host):
+	client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	client.settimeout(5)
+	client.connect((host, 445))
+	return client
+
+def smb_handler(client, payload):
+	client.send(payload)
+	tcp_response = client.recv(buffersize)
+	arch_smb = {
+			'netbios'	:	tcp_response[:4],
+			'smb_header':	tcp_response[4:36],		# smb_header : 32 bytes
+			'response'	:	tcp_response[36:]}
+	return arch_smb
+
+# Network scan part ==============================================================================
 def long2net(arg):
 	if (arg <= 0 or arg >= 0xFFFFFFFF):
 		raise ValueError("\033[91m[-]\033[0m Valeur du masque illégale.", hex(arg))
@@ -201,11 +442,11 @@ def checkhost(ip):
 		if ping.res:
 			logger.info("\033[96m[+]\033[0m La cible est en ligne : " + ip)
 			ips_o.append(ip)
-        except socket.error as e:
-                if e.errno == errno.EPERM:
-                        logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
-                else:
-                        pass
+	except socket.error as e:
+		if e.errno == errno.EPERM:
+			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
+		else:
+			pass
 	except Exception as e:
 		logger.error("\033[91m[-]\033[0m %s.", e.strerror)
 		pass
@@ -219,20 +460,21 @@ def network_scan(ip):
 	all_hosts = relicat if relicat != 255 else 255
 	return [ip_reseau + str(suffixe) for suffixe in range(int(pre[3]),all_hosts,1)]
 
+# Nmap part ==========================================================================================
 def scanner(target):
 	global online, bf_ok
 	ports_i = []
 	for port in known_ports:
 		try:
 			srcport = randint(20000,40000)
-        		conf.verb = 0
-        		SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
-        		pktflags = SYNACKpkt.getlayer(TCP).flags
-        		if pktflags == SYNACK:
+			conf.verb = 0
+			SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
+			pktflags = SYNACKpkt.getlayer(TCP).flags
+			if pktflags == SYNACK:
 				logger.info('\033[96m[+]\033[0m Port Ouvert : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
 				ports_i.append(port)
-	 		else:
-	        		RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
+			else:
+				RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 				send(RSTpkt)
 			online[target] = ports_i
 			if ports_i == 22 or ports_i == 2222 or ports_i == 21:
@@ -279,66 +521,68 @@ def port_scan(ip):
 
 def get_ip():
 	try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8",80))
-                ret = s.getsockname()[0]
-                s.close()
-                return ret
-        except:
-                sys.exit('\033[91m[-]\033[0m Déconnecté du réseau?\n')
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.connect(("8.8.8.8",80))
+		ret = s.getsockname()[0]
+		s.close()
+		return ret
+	except:
+		sys.exit('\033[91m[-]\033[0m Déconnecté du réseau?\n')
 
+# PCAP analysis part ====================================================================================
 def get_http_headers(http_payload):
 	try:
-        	headers_raw = http_payload[:http_payload.index("\r\n\r\n")+2]
-        	headers = dict(re.findall(r'(?P<name>.*?):(?P<value>.*?)\r\n', headers_raw))
-    	except:
-        	return None
+		headers_raw = http_payload[:http_payload.index("\r\n\r\n")+2]
+		headers = dict(re.findall(r'(?P<name>.*?):(?P<value>.*?)\r\n', headers_raw))
+	except:
+		return None
 	if 'Content-Type' not in headers:
-        	return None
-    	return headers
+		return None
+	return headers
 
 def pcap(pc, protocol):
-    	try:
-        	pcap = rdpcap(pc)
-        	p = pcap.sessions()
-    	except IOError:
-        	sys.exit("\033[91m[-]\033[0m IOError.")
-    	for session in p:
-		if protocol == 'http':
-			idx, flag = 0, 0
-			concat = ''
-			print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
-			for pkt in p[session]:
-				if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
-					print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
-					payload = pkt[TCP].payload
-					load = pkt[TCP].load
-					headers = get_http_headers(load)
-					if headers is not None and ' gzip' in headers.values():
-						print load[:15]
-						for k,v in headers.iteritems():
-							print k,':',v
-						tab = load.split('\r\n')
-						concat += tab[-1]
-						flag = 1
-					elif flag != 0 and headers is None:
-						tab = load.split('\r\n')
-						concat += tab[-1]
-						try:
-							sio = StringIO.StringIO(concat)
-							gz = gzip.GzipFile(fileobj=sio)
-							print gz.read()
-							flag = 0
-							concat = ''
-						except:
-							pass
-					else:
-						print payload
-				idx += 1
-		elif protocol == 'dns':
-			#TODO
-			pass
+		try:
+			pcap = rdpcap(pc)
+			p = pcap.sessions()
+		except IOError:
+			sys.exit("\033[91m[-]\033[0m IOError.")
+		for session in p:
+			if protocol == 'http':
+				idx, flag = 0, 0
+				concat = ''
+				print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
+				for pkt in p[session]:
+					if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
+						print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
+						payload = pkt[TCP].payload
+						load = pkt[TCP].load
+						headers = get_http_headers(load)
+						if headers is not None and ' gzip' in headers.values():
+							print load[:15]
+							for k,v in headers.iteritems():
+								print k,':',v
+							tab = load.split('\r\n')
+							concat += tab[-1]
+							flag = 1
+						elif flag != 0 and headers is None:
+							tab = load.split('\r\n')
+							concat += tab[-1]
+							try:
+								sio = StringIO.StringIO(concat)
+								gz = gzip.GzipFile(fileobj=sio)
+								print gz.read()
+								flag = 0
+								concat = ''
+							except:
+								pass
+						else:
+							print payload
+					idx += 1
+			elif protocol == 'dns':
+				#TODO
+				pass
 
+# Arguments handler part ===============================================================================
 def get_args():
 	args = ArgumentParser(version='2.1',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
@@ -380,7 +624,7 @@ def get_args():
 	return args.parse_args()
 
 
-# Entry point
+# Entry point ==========================================================================================
 if __name__ == '__main__':
 	args = get_args()
 	user = args.username[0]
@@ -485,35 +729,52 @@ if __name__ == '__main__':
 				page = query(443, host)
 				with open('HTTPS-' + host + '-page.html','w') as f:
 					f.write(page)
-# SMB ----------------------------------------------------------------------------------------------------------
+# SMB [Vérifie si le poste est vulnérable à MS17-010] ------------------------------------------------------
 			if 445 in online[host]:
-				print "\n\033[36m[+]\033[0m Sniffing -> Cible avec SMB ouvert : %s." % host
-				srcport = randint(20000,40000)
-				netbios    = [	"\x00",					# message type
-						"\x00\x00\x31" ]			# length
-				smb_header = [	"\xff\x53\x4d\x42",			# server_component : ".SMB"
-						"\x2b",					# smb_command : ????
-						"\x00\x00\x00\x00",			# nt_status
-						"\x18",					# flags1
-						"\x43\xc0",				# flags2
-						"\x00\x00",				# process_id_high
-						"\x00\x00\x00\x00\x00\x00\x00\x00",	# signature
-						"\x00\x00",				# reserved
-						"\xff\xff",				# tree_id
-						"\xff\xfe",				# process_id
-                                        	"\x00\x00",				# user_id
-						"\xfe\xff" ]				# multiplex_id
-				request    = [	"\x01",					# Word Count
-						"\x01\x00",				# byte_count
-						"\x0c\x00\x4a\x6c\x4a\x6d\x49\x68\x43\x6c\x42\x73\x72\x00" ]
-				payload = generate_smb_proto_payload(netbios, smb_header, request)
-                                packet = IP(dst=host)/TCP(sport=srcport, dport=445)/Raw(load=payload)
-                                sniffed, unans = sr(packet, timeout=1.5, verbose=0, multi=True)
-				sniffed.nsummary()
-				try:
-					wrpcap('SMB-' + host + '-filtered.pcap', sniffed, append=True)
-				except:
-					pass
+				print "\n\033[36m[+]\033[0m Vuln MS17-010 -> Cible avec SMB ouvert : %s." % host
+				# Connexion
+				smb_client = conn(host)
+				# P1: negotiate_proto_request
+				payload 	 = negotiate_proto_request()
+				smb_response = smb_handler(smb_client, payload)
+				# P2: session_setup_andx_request
+				payload 	 = session_setup_andx_request()
+				smb_response = smb_handler(smb_client, payload)
+				# P3: tree_connect_andx_request
+				userid 		 = smb_response['smb_header'][28:30]
+				native_os 	 = smb_response['response'][9:].split('\x00')[0]
+				payload 	 = tree_connect_andx_request(host, userid)
+				smb_response = smb_handler(smb_client, payload)
+				# P4: peeknamedpipe_request
+				treeid 		 = smb_response['smb_header'][24:26]
+				processid 	 = smb_response['smb_header'][26:28]
+				userid 		 = smb_response['smb_header'][28:30]
+				multiplex_id = smb_response['smb_header'][30:]
+				payload 	 = peeknamedpipe_request(treeid, processid, userid, multiplex_id)
+				smb_response = smb_handler(smb_client, payload)
+				# Cible vulnérable ?
+#			
+#				nt_status = smb.error_class, smb.reserved1, smb.error_code
+#				0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
+#				0xC0000008 - STATUS_INVALID_HANDLE
+#				0xC0000022 - STATUS_ACCESS_DENIED
+#
+				nt_status 	 = smb_response['smb_header'][4:8]
+				if nt_status == '\x05\x02\x00\xc0':
+					logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! ({})".format(host, native_os))
+					# P5: trans2_request
+					payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
+					smb_response = smb_handler(smb_client, payload)
+					signature	 = smb_response['smb_header'][:]
+					multiplex_id = smb_response['smb_header'][30:]
+					if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
+						key = calculate_doublepulsar_xor_key(signature)
+						logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
+				elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
+					logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable".format(ip))
+				else:
+					print '[~] Non détecté.'
+
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
