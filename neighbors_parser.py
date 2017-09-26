@@ -15,11 +15,6 @@ Steps:
 1st: ARP check on LAN/24
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
 3rd: Attacking attempts by BF
-
-Version 3:
-----------
-MS17-010 Detection is now embedded.
-Many thanks to https://github.com/pythonone/MS17-010/blob/master/scanners/smb_ms17_010.py
 '''
 __license__='''
 <+> Under the terms of the GPL v3 License.
@@ -133,7 +128,7 @@ def ssh_conn(log, addr, passwd, essai, port):
 	except:
 		pass
 
-# HTTP / HTTPS part ==============================================================================	
+# HTTP / HTTPS part ==============================================================================
 def query(port, dst):
 	if port == 443:
 		url = 'https://{}'.format(dst)
@@ -183,11 +178,11 @@ def negotiate_proto_request():
 	logger.debug("Generate negotiate request")
 	netbios = [
 			'\x00',				# 'Message_Type'
-		   	'\x00\x00\x54']		# 'Length'
+		   	'\x00\x00\x54']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42',	# 'server_component': .SMB
+			'\xFF\x53\x4D\x42',		# 'server_component': .SMB
 			'\x72',				# 'smb_command': Negotiate Protocol
-			'\x00\x00\x00\x00',	# 'nt_status'
+			'\x00\x00\x00\x00',		# 'nt_status'
 			'\x18',				# 'flags'
 			'\x01\x28',			# 'flags2'
 			'\x00\x00',			# 'process_id_high'
@@ -217,11 +212,11 @@ def session_setup_andx_request():
 	logger.debug("Generate session setup andx request")
 	netbios = [
 			'\x00',				# 'Message_Type'
-			'\x00\x00\x63']		# 'Length'
+			'\x00\x00\x63']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42',	# 'server_component': .SMB
+			'\xFF\x53\x4D\x42',		# 'server_component': .SMB
 			'\x73',				# 'smb_command': Session Setup AndX
-			'\x00\x00\x00\x00', # 'nt_status'
+			'\x00\x00\x00\x00', 		# 'nt_status'
 			'\x18',				# 'flags'
 			'\x01\x20',			# 'flags2'
 			'\x00\x00',			# 'process_id_high'
@@ -239,11 +234,11 @@ def session_setup_andx_request():
 			'\xDF\xFF',			# Max Buffer
 			'\x02\x00',			# Max Mpx Count
 			'\x01\x00',			# VC Number
-			'\x00\x00\x00\x00', # Session Key
+			'\x00\x00\x00\x00', 		# Session Key
 			'\x00\x00',			# ANSI Password Length
 			'\x00\x00',			# Unicode Password Length
-			'\x00\x00\x00\x00', # Reserved
-			'\x40\x00\x00\x00', # Capabilities
+			'\x00\x00\x00\x00', 		# Reserved
+			'\x40\x00\x00\x00', 		# Capabilities
 			'\x26\x00',			# Byte Count
 			'\x00',				# Account
 			'\x2e\x00',			# Primary Domain
@@ -257,11 +252,11 @@ def tree_connect_andx_request(ip,userid):
 	logger.debug("Generate tree connect andx request")
 	netbios = [
 			'\x00',				# 'Message_Type'
-			'\x00\x00\x47']		# 'Length'
+			'\x00\x00\x47']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\xFF\x53\x4D\x42', 		# 'server_component': .SMB
 			'\x75',				# 'smb_command': Tree Connect AndX
-			'\x00\x00\x00\x00', # 'nt_status'
+			'\x00\x00\x00\x00', 		# 'nt_status'
 			'\x18',				# 'flags'
 			'\x01\x20',			# 'flags2'
 			'\x00\x00',			# 'process_id_high'
@@ -272,7 +267,7 @@ def tree_connect_andx_request(ip,userid):
 			userid,				# 'user_id'
 			'\xC5\x5E']			# 'multiplex_id'
 	ipc = "\\\\{}\IPC$\x00".format(ip)
-	logger.debug("Connecting to {} with UID = {}".format(ipc, userid))
+	logger.debug("Connecting to {} with UID = {}".format(ipc, struct.unpack('>H', userid)))
 	tree_connect_andx_request = [
 			'\x04',				# Word Count
 			'\xFF',				# AndXCommand: No further commands
@@ -282,8 +277,8 @@ def tree_connect_andx_request(ip,userid):
 			'\x01\x00',			# Password Length
 			'\x1A\x00',			# Byte Count
 			'\x00',				# Password
-			ipc.encode(),		# \\xxx.xxx.xxx.xxx\IPC$
-			'\x3f\x3f\x3f\x3f\x3f\x00']   # Service
+			ipc.encode(),			# \\xxx.xxx.xxx.xxx\IPC$
+			'\x3f\x3f\x3f\x3f\x3f\x00']   	# Service
 	length = len("".join(smb_header)) + len("".join(tree_connect_andx_request))
 	netbios[1] = struct.pack(">L", length)[-3:]
 	return generate_smb_proto_payload(netbios, smb_header, tree_connect_andx_request)
@@ -294,11 +289,11 @@ def peeknamedpipe_request(treeid, processid, userid, multiplex_id):
 	logger.debug("Generate peeknamedpipe request")
 	netbios = [
 			'\x00',				# 'Message_Type'
-			'\x00\x00\x4a']		# 'Length'
+			'\x00\x00\x4a']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\xFF\x53\x4D\x42', 		# 'server_component': .SMB
 			'\x25',				# 'smb_command': Trans2
-			'\x00\x00\x00\x00', # 'nt_status'
+			'\x00\x00\x00\x00', 		# 'nt_status'
 			'\x18',				# 'flags'
 			'\x01\x28',			# 'flags2'
 			'\x00\x00',			# 'process_id_high'
@@ -317,7 +312,7 @@ def peeknamedpipe_request(treeid, processid, userid, multiplex_id):
 			'\x00',				# Max Setup Count
 			'\x00',				# Reserved
 			'\x00\x00',			# Flags
-			'\x00\x00\x00\x00', # Timeout: Return immediately
+			'\x00\x00\x00\x00', 		# Timeout: Return immediately
 			'\x00\x00',			# Reversed
 			'\x00\x00',			# Parameter Count
 			'\x4a\x00',			# Parameter Offset
@@ -328,7 +323,7 @@ def peeknamedpipe_request(treeid, processid, userid, multiplex_id):
 			'\x23\x00',			# SMB Pipe Protocol: Function: PeekNamedPipe (0x0023)
 			'\x00\x00',			# SMB Pipe Protocol: FID
 			'\x07\x00',
-			'\x5c\x50\x49\x50\x45\x5c\x00']  # \PIPE\
+			'\x5c\x50\x49\x50\x45\x5c\x00'] # \PIPE\
 	return generate_smb_proto_payload(netbios, smb_header, tran_request)
 
 def trans2_request(treeid, processid, userid, multiplex_id):
@@ -337,11 +332,11 @@ def trans2_request(treeid, processid, userid, multiplex_id):
 	logger.debug("Generate tran2 request")
 	netbios = [
 			'\x00',				# 'Message_Type'
-			'\x00\x00\x4f']		# 'Length'
+			'\x00\x00\x4f']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42', # 'server_component': .SMB
+			'\xFF\x53\x4D\x42', 		# 'server_component': .SMB
 			'\x32',				# 'smb_command': Trans2
-			'\x00\x00\x00\x00', # 'nt_status'
+			'\x00\x00\x00\x00', 		# 'nt_status'
 			'\x18',				# 'flags'
 			'\x07\xc0',			# 'flags2'
 			'\x00\x00',			# 'process_id_high'
@@ -360,7 +355,7 @@ def trans2_request(treeid, processid, userid, multiplex_id):
 			'\x00',				# Max Setup Count
 			'\x00',				# Reserved
 			'\x00\x00',			# Flags
-			'\xa6\xd9\xa4\x00', # Timeout: 3 hours, 3.622 seconds
+			'\xa6\xd9\xa4\x00', 		# Timeout: 3 hours, 3.622 seconds
 			'\x00\x00',			# Reversed
 			'\x0c\x00',			# Parameter Count
 			'\x42\x00',			# Parameter Offset
@@ -751,6 +746,7 @@ if __name__ == '__main__':
 # SMB [Vérifie si le poste est vulnérable à MS17-010] ----------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[SMB/CIFS]\033[0m Vuln MS17-010 -> Cible avec SMB ouvert : %s." % host
+				native_os = 'OS-NOTFOUND'
 				try:
 					# Connexion
 					smb_client = conn(host)
@@ -781,24 +777,23 @@ if __name__ == '__main__':
 #
 					nt_status 	 = smb_response['smb_header'][4:8]
 					if nt_status == '\x05\x02\x00\xc0':
-						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! ({})".format(host, native_os))
+						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! (\033[33m{}\033[0m)".format(host, native_os))
 						# P5: trans2_request
 						payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
 						smb_response = smb_handler(smb_client, payload)
-						signature	 = smb_response['smb_header'][14:22]
+						signature	 = smb_response['smb_header'][:]
 						multiplex_id = smb_response['smb_header'][30:]
 						if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
 							key = calculate_doublepulsar_xor_key(signature)
 							logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
 					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
-						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable".format(ip))
+						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(ip, native_os))
 					else:
-						print '[~] Non détecté.'
+						logger.info('[~] Non détecté! (\033[33m{}\033[0m)'.format(native_os))
 				except socket.error as e:
-					logger.error("\n\033[91m[-]\033[0m Socket error: {}".format(e))
+					logger.error("\n\033[91m[-]\033[0m Socket error: {} (\033[33m{}\033[0m)".format(e, native_os))
 				except Exception as e:
-					logger.error("\n\033[91m[-]\033[0m Undefined error: {}".format(e))
-
+					logger.error("\n\033[91m[-]\033[0m Undefined error: {} (\033[33m{}\033[0m)".format(e, native_os))
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
