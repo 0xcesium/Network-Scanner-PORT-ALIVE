@@ -368,6 +368,20 @@ def trans2_request(treeid, processid, userid, multiplex_id):
 			'\x0c\x00' + '\x00' * 12]
 	return generate_smb_proto_payload(netbios, smb_header, trans2_request)
 
+# https://blogs.technet.microsoft.com/msrc/2017/04/14/protecting-customers-and-evaluating-risk/
+# https://www.rapid7.com/db/modules/auxiliary/scanner/smb/smb_ms17_010
+# https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/scanner/smb/smb_ms17_010.rb
+# https://www.symantec.com/security_response/vulnerability.jsp?bid=96707
+# https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-SMB2/[MS-SMB2]-151016.pdf
+# https://msdn.microsoft.com/en-us/library/windows/desktop/aa365233(v=vs.85).aspx
+# https://technet.microsoft.com/en-us/library/security/ms17-010.aspx
+# https://community.rapid7.com/community/metasploit/blog/2017/04/03/introducing-rubysmb-the-protocol-library-nobody-else-wanted-to-write
+# https://msdn.microsoft.com/en-us/library/ee441741.aspx
+# https://github.com/countercept/doublepulsar-detection-script/blob/master/detect_doublepulsar_smb.py
+# http://stackoverflow.com/questions/38735421/packing-an-integer-number-to-3-bytes-in-python
+# https://zerosum0x0.blogspot.com/2017/04/doublepulsar-initial-smb-backdoor-ring.html
+# https://github.com/worawit/MS17-010/blob/master/BUG.txt
+
 def conn(host):
 	client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	client.settimeout(5)
@@ -379,7 +393,7 @@ def smb_handler(client, payload):
 	tcp_response = client.recv(buffersize)
 	arch_smb = {
 			'netbios'	:	tcp_response[:4],
-			'smb_header':	tcp_response[4:36],		# smb_header : 32 bytes
+			'smb_header'	:	tcp_response[4:36],		# smb_header : 32 bytes
 			'response'	:	tcp_response[36:]}
 	return arch_smb
 
@@ -615,7 +629,7 @@ def get_args():
 	args.add_argument('-r','--rdpcap',
 		action='store',
 		nargs=1,
-		help='Analyse un pcap pour déceler les requetes HTTP.')
+		help='Analyse un pcap [requetes HTTP par défaut].')
 	args.add_argument('-p','--protocol',
 		action='store',
 		nargs=1,
@@ -729,7 +743,7 @@ if __name__ == '__main__':
 				page = query(443, host)
 				with open('HTTPS-' + host + '-page.html','w') as f:
 					f.write(page)
-# SMB [Vérifie si le poste est vulnérable à MS17-010] ------------------------------------------------------
+# SMB [Vérifie si le poste est vulnérable à MS17-010] ----------------------------------------------------------
 			if 445 in online[host]:
 				print "\n\033[36m[+]\033[0m Vuln MS17-010 -> Cible avec SMB ouvert : %s." % host
 				# Connexion
@@ -749,11 +763,11 @@ if __name__ == '__main__':
 				treeid 		 = smb_response['smb_header'][24:26]
 				processid 	 = smb_response['smb_header'][26:28]
 				userid 		 = smb_response['smb_header'][28:30]
-				multiplex_id = smb_response['smb_header'][30:]
+				multiplex_id 	 = smb_response['smb_header'][30:]
 				payload 	 = peeknamedpipe_request(treeid, processid, userid, multiplex_id)
 				smb_response = smb_handler(smb_client, payload)
 				# Cible vulnérable ?
-#			
+#
 #				nt_status = smb.error_class, smb.reserved1, smb.error_code
 #				0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
 #				0xC0000008 - STATUS_INVALID_HANDLE
