@@ -685,7 +685,7 @@ if __name__ == '__main__':
 			if args.bruteforce and bf_ok:
 				idx = 0
 				if 21 in online[host]:
-					print "\n\033[33m[+]\033[0m Cible avec FTP ouvert : %s." % host
+					print "\n\033[33m[FTP]\033[0m Cible avec FTP ouvert : %s." % host
 					try:
 						threads = []
 						for item in dic:
@@ -709,7 +709,7 @@ if __name__ == '__main__':
 # SSH ----------------------------------------------------------------------------------------------------------
 				if 22 in online[host] or 2222 in online[host]:
 					port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 2222]
-					print "\n\033[31m[+]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
+					print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
 					try:
 						threads = []
 						for psswd in dic:
@@ -732,62 +732,67 @@ if __name__ == '__main__':
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
 				port_idx = [x for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
-				print "\n\033[35m[+]\033[0m Getting page -> Cible avec HTTP ouvert : {} sur le port {}.".format(host, port_idx[0])
+				print "\n\033[35m[HTTP]\033[0m Getting page -> Cible avec HTTP ouvert : {} sur le port {}.".format(host, port_idx[0])
 				for item in port_idx:
 					page = query(item, host)
 					with open('HTTP-' + host + '-page.html','w') as f:
 						f.write(page)
 # HTTPS --------------------------------------------------------------------------------------------------------
 			if 443 in online[host]:
-				print "\n\033[1m[+]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
+				print "\n\033[1m[HTTPS]\033[0m Sniffing -> Cible avec HTTPS ouvert : %s." % host
 				page = query(443, host)
 				with open('HTTPS-' + host + '-page.html','w') as f:
 					f.write(page)
 # SMB [Vérifie si le poste est vulnérable à MS17-010] ----------------------------------------------------------
 			if 445 in online[host]:
-				print "\n\033[36m[+]\033[0m Vuln MS17-010 -> Cible avec SMB ouvert : %s." % host
-				# Connexion
-				smb_client = conn(host)
-				# P1: negotiate_proto_request
-				payload 	 = negotiate_proto_request()
-				smb_response = smb_handler(smb_client, payload)
-				# P2: session_setup_andx_request
-				payload 	 = session_setup_andx_request()
-				smb_response = smb_handler(smb_client, payload)
-				# P3: tree_connect_andx_request
-				userid 		 = smb_response['smb_header'][28:30]
-				native_os 	 = smb_response['response'][9:].split('\x00')[0]
-				payload 	 = tree_connect_andx_request(host, userid)
-				smb_response = smb_handler(smb_client, payload)
-				# P4: peeknamedpipe_request
-				treeid 		 = smb_response['smb_header'][24:26]
-				processid 	 = smb_response['smb_header'][26:28]
-				userid 		 = smb_response['smb_header'][28:30]
-				multiplex_id 	 = smb_response['smb_header'][30:]
-				payload 	 = peeknamedpipe_request(treeid, processid, userid, multiplex_id)
-				smb_response = smb_handler(smb_client, payload)
-				# Cible vulnérable ?
-#
-#				nt_status = smb.error_class, smb.reserved1, smb.error_code
-#				0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
-#				0xC0000008 - STATUS_INVALID_HANDLE
-#				0xC0000022 - STATUS_ACCESS_DENIED
-#
-				nt_status 	 = smb_response['smb_header'][4:8]
-				if nt_status == '\x05\x02\x00\xc0':
-					logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! ({})".format(host, native_os))
-					# P5: trans2_request
-					payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
+				print "\n\033[36m[SMB/CIFS]\033[0m Vuln MS17-010 -> Cible avec SMB ouvert : %s." % host
+				try:
+					# Connexion
+					smb_client = conn(host)
+					# P1: negotiate_proto_request
+					payload 	 = negotiate_proto_request()
 					smb_response = smb_handler(smb_client, payload)
-					signature	 = smb_response['smb_header'][:]
-					multiplex_id = smb_response['smb_header'][30:]
-					if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
-						key = calculate_doublepulsar_xor_key(signature)
-						logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
-				elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
-					logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable".format(ip))
-				else:
-					print '[~] Non détecté.'
+					# P2: session_setup_andx_request
+					payload 	 = session_setup_andx_request()
+					smb_response = smb_handler(smb_client, payload)
+					# P3: tree_connect_andx_request
+					userid 		 = smb_response['smb_header'][28:30]
+					native_os 	 = smb_response['response'][9:].split('\x00')[0]
+					payload 	 = tree_connect_andx_request(host, userid)
+					smb_response = smb_handler(smb_client, payload)
+					# P4: peeknamedpipe_request
+					treeid 		 = smb_response['smb_header'][24:26]
+					processid 	 = smb_response['smb_header'][26:28]
+					userid 		 = smb_response['smb_header'][28:30]
+					multiplex_id 	 = smb_response['smb_header'][30:]
+					payload 	 = peeknamedpipe_request(treeid, processid, userid, multiplex_id)
+					smb_response = smb_handler(smb_client, payload)
+					# Cible vulnérable ?
+#
+#					nt_status = smb.error_class, smb.reserved1, smb.error_code
+#					0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
+#					0xC0000008 - STATUS_INVALID_HANDLE
+#					0xC0000022 - STATUS_ACCESS_DENIED
+#
+					nt_status 	 = smb_response['smb_header'][4:8]
+					if nt_status == '\x05\x02\x00\xc0':
+						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! ({})".format(host, native_os))
+						# P5: trans2_request
+						payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
+						smb_response = smb_handler(smb_client, payload)
+						signature	 = smb_response['smb_header'][:]
+						multiplex_id = smb_response['smb_header'][30:]
+						if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
+							key = calculate_doublepulsar_xor_key(signature)
+							logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
+					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
+						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable".format(ip))
+					else:
+						print '[~] Non détecté.'
+				except socket.error as e:
+					logger.error("\n\033[91m[-]\033[0m Socket error: {}".format(e))
+				except Exception as e:
+					logger.error("\n\033[91m[-]\033[0m Undefined error: {}".format(e))
 
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
