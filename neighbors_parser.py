@@ -15,6 +15,11 @@ Steps:
 1st: ARP check on LAN/24
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
 3rd: Attacking attempts by BF
+
+Version 3:
+----------
+MS17-010 Detection is now embedded.
+Many thanks to https://github.com/pythonone/MS17-010/blob/master/scanners/smb_ms17_010.py
 '''
 __license__='''
 <+> Under the terms of the GPL v3 License.
@@ -780,7 +785,7 @@ if __name__ == '__main__':
 						# P5: trans2_request
 						payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
 						smb_response = smb_handler(smb_client, payload)
-						signature	 = smb_response['smb_header'][:]
+						signature	 = smb_response['smb_header'][14:22]
 						multiplex_id = smb_response['smb_header'][30:]
 						if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
 							key = calculate_doublepulsar_xor_key(signature)
