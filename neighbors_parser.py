@@ -15,6 +15,11 @@ Steps:
 1st: ARP check on LAN/24
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
 3rd: Attacking attempts by BF
+
+Version 3:
+----------
+MS17-010 detection now embedded.
+Many thanks to https://github.com/worawit/MS17-010.
 '''
 __license__='''
 <+> Under the terms of the GPL v3 License.
