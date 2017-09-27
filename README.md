@@ -8,16 +8,16 @@ usage: neighbors_parser.py.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME]
 
 Discovery and attack only, made by Cesium133.
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -v, --version         show program's version number and exit
-  -b, --bruteforce      Argument optionnel pour déclencher le mode attaque.
-  -i IP, --ip IP        Machine cible.
-  -w WORDLIST, --wordlist WORDLIST
-                        Ajout d'un dictionnaire.
-  -u USERNAME, --username USERNAME
-                        Username distant à BF.
-  -m MODE, --mode MODE  Alphabet de bruteforce [lower | upper | digits |
-                        letters+digits | hex | all].
-  -l LONGUEUR, --longueur LONGUEUR
-                        Longueur des mots de passe souhaitée.
+            optional arguments:
+              -h, --help            show this help message and exit
+              -v, --version         show program's version number and exit
+              -b, --bruteforce      Argument optionnel pour déclencher le mode attaque.
+              -i IP, --ip IP        Machine cible.
+              -w WORDLIST, --wordlist WORDLIST
+                                    Ajout d'un dictionnaire.
+              -u USERNAME, --username USERNAME
+                                    Username distant à BF.
+              -m MODE, --mode MODE  Alphabet de bruteforce [lower | upper | digits |
+                                    letters+digits | hex | all].
+              -l LONGUEUR, --longueur LONGUEUR
+                                    Longueur des mots de passe souhaitée.
