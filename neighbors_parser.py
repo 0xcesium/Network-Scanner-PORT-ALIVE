@@ -90,12 +90,12 @@ def generate(mode, lgr):
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
 			if psswd not in pwd: pwd.append(psswd)
-			sys.stdout.write('\r\033[96m[+]\033[0m Remplissage du dictionnaire [/!\\ en mémoire] : ' +
+			sys.stdout.write('\r\033[96m[BF]\033[0m Remplissage du dictionnaire [/!\\ en mémoire] : ' +
 					 str(len(pwd)) + ' / '+ str(len_mode))
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
-				sys.stdout.write('\n\033[94m[+]\033[0m Dictionnaire généré en totalité.\n')
+				sys.stdout.write('\n\033[94m[BF]\033[0m Dictionnaire généré en totalité.\n')
 	except KeyboardInterrupt:
 		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n\n' % len(pwd))
 		return pwd
@@ -120,7 +120,7 @@ def ssh_conn(log, addr, passwd, essai, port):
 	try:
 		client = SSHClient()
 		client.set_missing_host_key_policy(AutoAddPolicy())
-		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' : ' + passwd)
+		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' : ' + passwd)
 		sys.stdout.flush()
 		client.connect(addr,
 			username=log,
@@ -128,7 +128,7 @@ def ssh_conn(log, addr, passwd, essai, port):
 			timeout=10,
 			port= port,
 			look_for_keys=False)
-		print '\n\n\033[91m[+]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
+		print '\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
 		flag = 1
 	except:
 		pass
@@ -436,7 +436,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	print_fmt("\033[94m[+]\033[0m ARP %s sur %s" % (net, interface))
+	print_fmt("\033[94m[ARP]\033[0m %s sur %s" % (net, interface))
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
@@ -450,7 +450,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 			except KeyboardInterrupt:
 				print '\033[91m[-]\033[0m L\'utilisateur a choisi l\'interruption du process.'
 				break
-			logger.info("\033[96m[+]\033[0m " + line)
+			logger.info("\033[96m[ONLINE]\033[0m " + line)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
 			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
@@ -476,7 +476,7 @@ def checkhost(ip):
 	try:
 		ping, no = sr(IP(dst=ip)/ICMP(), timeout=1.5, retry=-2)
 		if ping.res:
-			logger.info("\033[96m[+]\033[0m La cible est en ligne : " + ip)
+			logger.info("\033[96m[ONLINE]\033[0m Cible: " + ip)
 			ips_o.append(ip)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
@@ -507,7 +507,7 @@ def scanner(target):
 			SYNACKpkt = sr1(IP(dst = target)/TCP(sport = srcport, dport = port, flags = "S"), timeout=2)
 			pktflags = SYNACKpkt.getlayer(TCP).flags
 			if pktflags == SYNACK:
-				logger.info('\033[96m[+]\033[0m Port Ouvert : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
+				logger.info('\033[96m[PORT]\033[0m En écoute : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
 				ports_i.append(port)
 			else:
 				RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
@@ -533,7 +533,7 @@ def port_scan(ip):
 			if not ips_o:
 				sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 		else:
-			print '\n\033[92m[*]\033[0m Scan du réseau distant:'
+			print_fmt('\n\033[92m[*]\033[0m Scan du réseau distant:')
 			all_hosts = network_scan(ip)
 			threads = []
 			for host in all_hosts:
