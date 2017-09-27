@@ -399,10 +399,9 @@ def smb_handler(client, payload):
 	tcp_response = client.recv(buffersize)
 	arch_smb = {
 			'netbios'	:	tcp_response[:4],
-			'smb_header'	:	tcp_response[4:36],		# smb_header : 32 bytes
 			'response'	:	tcp_response[36:]
 	}
-	arch_smb['smb_header'] = {
+	arch_smb['smb_header'] = { 	# smb_header : 32 bytes
 			'server_component'	:	tcp_response[4:8],
 			'smb_command'		:	tcp_response[8:9],
 			'error_class'		:	tcp_response[9:10],
