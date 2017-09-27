@@ -153,23 +153,6 @@ def generate_smb_proto_payload(*protos):
 		hexdata.extend(proto)
 	return "".join(hexdata)
 
-'''
-SMB_HEADER architecture:
-	"server_component : 04x"
-	"smb_command      : 01x"
-	"error_class      : 01x"
-	"error_code       : 02x"
-	"flags            : 01x"
-	"flags2           : 02x"
-	"process_id_high  : 02x"
-	"signature        : 08x"
-	"reserved2        : 02x"
-	"tree_id          : 02x"
-	"process_id       : 02x"
-	"user_id          : 02x"
-	"multiplex_id     : 02x"
-'''
-
 def calculate_doublepulsar_xor_key(s):
 	"""Calculate Doublepulsar Xor Key
 	"""
@@ -219,7 +202,7 @@ def session_setup_andx_request():
 			'\x00',				# 'Message_Type'
 			'\x00\x00\x63']			# 'Length'
 	smb_header = [
-			'\xFF\x53\x4D\x42',		# 'server_component': .SMB
+			'\xFF\x53\x4D\x42', 		# 'server_component': .SMB
 			'\x73',				# 'smb_command': Session Setup AndX
 			'\x00\x00\x00\x00', 		# 'nt_status'
 			'\x18',				# 'flags'
@@ -393,13 +376,48 @@ def conn(host):
 	client.connect((host, 445))
 	return client
 
+'''
+SMB_HEADER architecture:
+	"server_component : 04x"
+	"smb_command      : 01x"
+	"error_class      : 01x"
+	"reserved1        : 01x"
+	"error_code       : 02x"
+	"flags            : 01x"
+	"flags2           : 02x"
+	"process_id_high  : 02x"
+	"signature        : 08x"
+	"reserved2        : 02x"
+	"tree_id          : 02x"
+	"process_id       : 02x"
+	"user_id          : 02x"
+	"multiplex_id     : 02x"
+'''
+
 def smb_handler(client, payload):
 	client.send(payload)
 	tcp_response = client.recv(buffersize)
 	arch_smb = {
 			'netbios'	:	tcp_response[:4],
 			'smb_header'	:	tcp_response[4:36],		# smb_header : 32 bytes
-			'response'	:	tcp_response[36:]}
+			'response'	:	tcp_response[36:]
+	}
+	arch_smb['smb_header'] = {
+			'server_component'	:	tcp_response[4:8],
+			'smb_command'		:	tcp_response[8:9],
+			'error_class'		:	tcp_response[9:10],
+			'reserved1'		:	tcp_response[10:11],
+			'error_code'		:	tcp_response[11:13],
+			'flags'			:	tcp_response[13:14],
+			'flags2'		:	tcp_response[14:16],
+			'process_id_high' 	:	tcp_response[16:18],
+			'signature'		:	tcp_response[18:26],
+			'reserved2'		:	tcp_response[26:28],
+			'tree_id'		:	tcp_response[28:30],
+			'process_id'		:	tcp_response[30:32],
+			'user_id'		:	tcp_response[32:34],
+			'multiplex_id'		:	tcp_response[34:36]
+	}
 	return arch_smb
 
 # Network scan part ==============================================================================
@@ -419,7 +437,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	print "\n\033[94m[+]\033[0m ARP %s sur %s" % (net, interface)
+	print_fmt("\033[94m[+]\033[0m ARP %s sur %s" % (net, interface))
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
@@ -433,7 +451,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
 			except KeyboardInterrupt:
 				print '\033[91m[-]\033[0m L\'utilisateur a choisi l\'interruption du process.'
 				break
-			logger.info("\033[92m[*]\033[0m " + line)
+			logger.info("\033[96m[+]\033[0m " + line)
 	except socket.error as e:
 		if e.errno == errno.EPERM:
 			logger.error("\033[91m[-]\033[0m %s. Vous n'etes pas root?", e.strerror)
@@ -509,34 +527,40 @@ def scanner(target):
 def port_scan(ip):
 	global ips_o, online
 	all_hosts = []
-	if ip == get_ip():
-		print_fmt('\n\033[92m[*]\033[0m Scan du réseau local:')
-		local_network_scan()
-		if not ips_o:
+	try:
+		if ip == get_ip():
+			print_fmt('\n\033[92m[*]\033[0m Scan du réseau local:')
+			local_network_scan()
+			if not ips_o:
+				sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
+		else:
+			print '\n\033[92m[*]\033[0m Scan du réseau distant:'
+			all_hosts = network_scan(ip)
+			threads = []
+			for host in all_hosts:
+				proc = Thread(target=checkhost,args=(host,))
+				threads.append(proc)
+				proc.start()
+			for thr in threads:
+				thr.join()
+		if ips_o:
+			print_fmt('\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:')
+			threads = []
+			for ip in ips_o:
+				proc = Thread(target=scanner,args=(ip,))
+				threads.append(proc)
+				proc.start()
+			for thr in threads:
+				thr.join()
+		else:
 			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	else:
-		print '\n\033[92m[*]\033[0m Scan du réseau distant:'
-		all_hosts = network_scan(ip)
-		threads = []
-		for host in all_hosts:
-			proc = Thread(target=checkhost,args=(host,))
-			threads.append(proc)
-			proc.start()
-		for thr in threads:
-			thr.join()
-	if ips_o:
-		print_fmt('\n\033[92m[*]\033[0m Scan de port sur les machines ARPées:')
-		threads = []
-		for ip in ips_o:
-			proc = Thread(target=scanner,args=(ip,))
-			threads.append(proc)
-			proc.start()
-		for thr in threads:
-			thr.join()
-	else:
-		sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
-	print_fmt('\n\033[92m[*]\033[0m Résumé du scan de ports:')
-	print online
+		print_fmt('\n\033[92m[*]\033[0m Résumé du scan de ports:')
+		print online
+	except KeyboardInterrupt:
+		logger.info('\n\033[93m[*]\033[0m Interruption utilisateur.')
+		sys.exit(-1)
+	except Exception as e:
+		logger.error('\n\033[92m[-]\033[0m Erreur port_scan({}): \033[31m{}\033[0m'.format(ip, e))
 
 def get_ip():
 	try:
@@ -548,62 +572,9 @@ def get_ip():
 	except:
 		sys.exit('\033[91m[-]\033[0m Déconnecté du réseau?\n')
 
-# PCAP analysis part ====================================================================================
-def get_http_headers(http_payload):
-	try:
-		headers_raw = http_payload[:http_payload.index("\r\n\r\n")+2]
-		headers = dict(re.findall(r'(?P<name>.*?):(?P<value>.*?)\r\n', headers_raw))
-	except:
-		return None
-	if 'Content-Type' not in headers:
-		return None
-	return headers
-
-def pcap(pc, protocol):
-		try:
-			pcap = rdpcap(pc)
-			p = pcap.sessions()
-		except IOError:
-			sys.exit("\033[91m[-]\033[0m IOError.")
-		for session in p:
-			if protocol == 'http':
-				idx, flag = 0, 0
-				concat = ''
-				print blu, '\n[ Nouvelle Session = %s ]' % p[session], nat
-				for pkt in p[session]:
-					if pkt.haslayer(TCP) and pkt.haslayer(Raw) and (pkt[TCP].flags == 24L or pkt[TCP].flags == 16):
-						print '\033[91m\nPacket [ %d ] -------------- Nouveau Payload -------------\033[0m \n\n' % idx
-						payload = pkt[TCP].payload
-						load = pkt[TCP].load
-						headers = get_http_headers(load)
-						if headers is not None and ' gzip' in headers.values():
-							print load[:15]
-							for k,v in headers.iteritems():
-								print k,':',v
-							tab = load.split('\r\n')
-							concat += tab[-1]
-							flag = 1
-						elif flag != 0 and headers is None:
-							tab = load.split('\r\n')
-							concat += tab[-1]
-							try:
-								sio = StringIO.StringIO(concat)
-								gz = gzip.GzipFile(fileobj=sio)
-								print gz.read()
-								flag = 0
-								concat = ''
-							except:
-								pass
-						else:
-							print payload
-					idx += 1
-			elif protocol == 'dns':
-				#TODO
-				pass
-
 # Arguments handler part ===============================================================================
 def get_args():
-	args = ArgumentParser(version='2.1',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='3.3',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
@@ -631,39 +602,26 @@ def get_args():
 		nargs=1,
 		default=['3'],
 		help='Longueur des mots de passe souhaitée.')
-	args.add_argument('-r','--rdpcap',
-		action='store',
-		nargs=1,
-		help='Analyse un pcap [requetes HTTP par défaut].')
-	args.add_argument('-p','--protocol',
-		action='store',
-		nargs=1,
-		default=['http'],
-		help='Protocole à analyser.')
 	return args.parse_args()
 
 
 # Entry point ==========================================================================================
 if __name__ == '__main__':
 	args = get_args()
-	user = args.username[0]
-	print '\033[94m[+]\033[0m User:', user
 	ip = get_ip() if args.ip is None else args.ip[0]
-	print '\033[94m[+]\033[0m IP:', ip
-
+	logger.info('\033[93m[IP]\033[0m {}'.format(ip))
+#
 #	from multiprocessing import Pool
 #	with open(args.wordlist[0],'r') as dico:
 #		pool = Pool(4)
 #		pool.map(detonate,dico,4)
-
-	if args.rdpcap is not None:
-		pcap(args.pcap[0], args.protocol[0].lower())
-		sys.exit(0)
-
+#
 	ips = network_scan(ip)
 	port_scan(ip)
 
 	if args.bruteforce and bf_ok:
+		user = args.username[0]
+		logger.info('\033[93m[USER]\033[0m {}'.format(user))
 		if args.wordlist is not None:
 			try:
 				print_fmt("\033[94m[+]\033[0m Prise en compte de la wordlist: " + args.wordlist[0])
@@ -678,7 +636,6 @@ if __name__ == '__main__':
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
-
 	elif args.bruteforce:
 		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/2222].'
 
@@ -762,15 +719,15 @@ if __name__ == '__main__':
 					payload 	 = session_setup_andx_request()
 					smb_response = smb_handler(smb_client, payload)
 					# P3: tree_connect_andx_request
-					userid 		 = smb_response['smb_header'][28:30]
+					userid 		 = smb_response['smb_header']['user_id']
 					native_os 	 = smb_response['response'][9:].split('\x00')[0]
 					payload 	 = tree_connect_andx_request(host, userid)
 					smb_response = smb_handler(smb_client, payload)
 					# P4: peeknamedpipe_request
-					treeid 		 = smb_response['smb_header'][24:26]
-					processid 	 = smb_response['smb_header'][26:28]
-					userid 		 = smb_response['smb_header'][28:30]
-					multiplex_id 	 = smb_response['smb_header'][30:]
+					treeid 		 = smb_response['smb_header']['tree_id']
+					processid 	 = smb_response['smb_header']['process_id']
+					userid 		 = smb_response['smb_header']['user_id']
+					multiplex_id 	 = smb_response['smb_header']['multiplex_id']
 					payload 	 = peeknamedpipe_request(treeid, processid, userid, multiplex_id)
 					smb_response = smb_handler(smb_client, payload)
 					# Cible vulnérable ?
@@ -780,21 +737,23 @@ if __name__ == '__main__':
 #					0xC0000008 - STATUS_INVALID_HANDLE
 #					0xC0000022 - STATUS_ACCESS_DENIED
 #
-					nt_status 	 = smb_response['smb_header'][4:8]
+					nt_status = smb_response['smb_header']['error_class'] + \
+								smb_response['smb_header']['reserved1'] + \
+								smb_response['smb_header']['error_code']
 					if nt_status == '\x05\x02\x00\xc0':
 						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! (\033[33m{}\033[0m)".format(host, native_os))
 						# P5: trans2_request
 						payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
 						smb_response = smb_handler(smb_client, payload)
-						signature	 = smb_response['smb_header'][:]
-						multiplex_id = smb_response['smb_header'][30:]
+						signature	 = smb_response['smb_header']['signature']
+						multiplex_id = smb_response['smb_header']['multiplex_id']
 						if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
 							key = calculate_doublepulsar_xor_key(signature)
 							logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
 					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
 						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(ip, native_os))
 					else:
-						logger.info('[~] Non détecté! (\033[33m{}\033[0m)'.format(native_os))
+						logger.info('\033[93m[~]\033[0m Non détecté! (\033[33m{}\033[0m)'.format(native_os))
 				except socket.error as e:
 					logger.error("\n\033[91m[-]\033[0m Socket error: {} (\033[33m{}\033[0m)".format(e, native_os))
 				except Exception as e:
