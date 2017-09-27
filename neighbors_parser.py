@@ -741,14 +741,15 @@ if __name__ == '__main__':
 								smb_response['smb_header']['error_code']
 					if nt_status == '\x05\x02\x00\xc0':
 						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! (\033[33m{}\033[0m)".format(host, native_os))
-						# P5: trans2_request
-						payload 	 = trans2_request(treeid, processid, userid, multiplex_id)
-						smb_response = smb_handler(smb_client, payload)
-						signature	 = smb_response['smb_header']['signature']
-						multiplex_id = smb_response['smb_header']['multiplex_id']
-						if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
-							key = calculate_doublepulsar_xor_key(signature)
-							logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
+						if args.bruteforce:
+							# P5: trans2_request
+							payload = trans2_request(treeid, processid, userid, multiplex_id)
+							smb_response = smb_handler(smb_client, payload)
+							signature = smb_response['smb_header']['signature']
+							multiplex_id = smb_response['smb_header']['multiplex_id']
+							if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
+								key = calculate_doublepulsar_xor_key(signature)
+								logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
 					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
 						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(ip, native_os))
 					else:
