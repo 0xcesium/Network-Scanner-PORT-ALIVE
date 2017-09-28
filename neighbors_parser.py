@@ -369,9 +369,9 @@ def generate(mode, lgr):
 			sys.stdout.flush()
 			if len(pwd) == len_mode:
 				stop = True
-				sys.stdout.write('\n\033[94m[BF]\033[0m Dictionnaire généré en totalité.\n')
+				sys.stdout.write('\n\033[96m[BF]\033[0m Dictionnaire généré en totalité.\n')
 	except KeyboardInterrupt:
-		sys.stdout.write('\n\033[94m[+]\033[0m Génération interrompue avec succès. Longueur : %d.\n\n' % len(pwd))
+		sys.stdout.write('\n\033[96m[BF]\033[0m Génération interrompue avec succès. Longueur : %d.\n\n' % len(pwd))
 		return pwd
 	return pwd
 
@@ -504,8 +504,8 @@ def session_setup_andx_request():
 			'\x26\x00',			# Byte Count
 			'\x00',				# Account
 			'\x2e\x00',			# Primary Domain
-			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x32\x31\x39\x35\x00',		# Native OS: Windows 2000 2195
-			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x35\x2e\x30\x00']			# Native OS: Windows 2000 5.0
+			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x32\x31\x39\x35\x00',	# Native OS: Windows 2000 2195
+			'\x57\x69\x6e\x64\x6f\x77\x73\x20\x32\x30\x30\x30\x20\x35\x2e\x30\x00']		# Native OS: Windows 2000 5.0
 	return generate_smb_proto_payload(netbios, smb_header, session_setup_andx_request)
 
 def tree_connect_andx_request(ip,userid):
@@ -717,12 +717,11 @@ def mac_address_id(line):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
 	global ips_o
-	print_fmt("\033[94m[ARP]\033[0m %s sur %s" % (net, interface))
+	print_fmt("\n\033[94m[ARP]\033[0m %s sur %s" % (net, interface))
 	try:
 		ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
 		for s, r in ans.res:
 			line = r.sprintf("%Ether.src%  %ARP.psrc%")
-	
 			ips_o.append(line.split(' ')[2])
 			line = mac_address_id(line)
 			try:
@@ -792,12 +791,12 @@ def scanner(target):
 			if pktflags == SYNACK:
 				logger.info('\033[96m[PORT]\033[0m En écoute : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
 				ports_i.append(port)
+				if port == 22 or port == 2222 or port == 21:
+					bf_ok = True
 			else:
 				RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 				send(RSTpkt)
 			online[target] = ports_i
-			if ports_i == 22 or ports_i == 2222 or ports_i == 21:
-				bf_ok = True
 		except KeyboardInterrupt:
 			RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
 			send(RSTpkt)
@@ -856,7 +855,7 @@ def get_ip():
 
 # Arguments handler part ===============================================================================
 def get_args():
-	args = ArgumentParser(version='4.1',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='3.6',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
@@ -903,17 +902,18 @@ if __name__ == '__main__':
 
 	if args.bruteforce and bf_ok:
 		user = args.username[0]
+		print
 		logger.info('\033[93m[USER]\033[0m {}'.format(user))
 		if args.wordlist is not None:
 			try:
-				print_fmt("\033[94m[+]\033[0m Prise en compte de la wordlist: " + args.wordlist[0])
+				print_fmt("\033[94m[WL]\033[0m Prise en compte de la wordlist: " + args.wordlist[0])
 				with open(args.wordlist[0],'rb') as wl:
 					dic = wl.read().replace('\r','').split('\n')
 			except:
-				print '\033[91m[-]\033[0m une erreur est survenue: Ouverture de la wordlist.'
+				print '\033[91m[WL]\033[0m une erreur est survenue: Ouverture de la wordlist.'
 				sys.exit(-1)
 		else:
-			print_fmt("\033[94m[+]\033[0m Generation du dictionnaire.")
+			print_fmt("\033[94m[BF]\033[0m Generation du dictionnaire.")
 			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
@@ -1047,3 +1047,4 @@ if __name__ == '__main__':
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
+
