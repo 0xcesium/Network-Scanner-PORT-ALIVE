@@ -417,7 +417,7 @@ def query(port, dst):
 	token	= {'token':pwd_alpha(16, 'alpha')}
 	headers = {'content-type':'application/json'}
 	r = requests.get(url, headers=headers, verify=False)
-	logger.info("\033[92m[*]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
+	logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
 	return r.text.encode('utf-8')
 
 # SMB part =======================================================================================
