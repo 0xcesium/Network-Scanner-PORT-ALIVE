@@ -672,24 +672,24 @@ def smb_handler(client, payload):
 	client.send(payload)
 	tcp_response = client.recv(buffersize)
 	arch_smb = {
-		'netbios'	:	tcp_response[:4],
-		'response'	:	tcp_response[36:]
+		'netbios' : tcp_response[:4],
+		'response': tcp_response[36:]
 	}
 	arch_smb['smb_header'] = { 	# smb_header : 32 bytes
-		'server_component'	:	tcp_response[4:8],
-		'smb_command'		:	tcp_response[8:9],
-		'error_class'		:	tcp_response[9:10],
-		'reserved1'		:	tcp_response[10:11],
-		'error_code'		:	tcp_response[11:13],
-		'flags'			:	tcp_response[13:14],
-		'flags2'		:	tcp_response[14:16],
-		'process_id_high'	:	tcp_response[16:18],
-		'signature'		:	tcp_response[18:26],
-		'reserved2'		:	tcp_response[26:28],
-		'tree_id'		:	tcp_response[28:30],
-		'process_id'		:	tcp_response[30:32],
-		'user_id'		:	tcp_response[32:34],
-		'multiplex_id'		:	tcp_response[34:36]
+		'server_component':	tcp_response[4:8],
+		'smb_command'	  :	tcp_response[8:9],
+		'error_class'	  :	tcp_response[9:10],
+		'reserved1'	  :	tcp_response[10:11],
+		'error_code'	  :	tcp_response[11:13],
+		'flags'		  :	tcp_response[13:14],
+		'flags2'	  :	tcp_response[14:16],
+		'process_id_high' :	tcp_response[16:18],
+		'signature'	  :	tcp_response[18:26],
+		'reserved2'	  :	tcp_response[26:28],
+		'tree_id'	  :	tcp_response[28:30],
+		'process_id'	  :	tcp_response[30:32],
+		'user_id'	  :	tcp_response[32:34],
+		'multiplex_id'	  :	tcp_response[34:36]
 	}
 	return arch_smb
 
@@ -855,7 +855,7 @@ def get_ip():
 
 # Arguments handler part ===============================================================================
 def get_args():
-	args = ArgumentParser(version='3.6',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='3.8',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
