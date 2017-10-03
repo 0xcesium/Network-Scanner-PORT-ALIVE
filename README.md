@@ -1,5 +1,9 @@
 # Network-Scanner-PORT-ALIVE
-version 3.8
+Version 3.8
+
+Dependencies : Scapy
+
+            user@host# apt-get install scapy
 
 ## Network scanner in Python 2.7 with Scapy using ARP for optimization.
 
@@ -9,6 +13,7 @@ Then, it will activate a search for well-known ports upon those hosts.
 
 It's able to check a MS17-010 vulnerability on a group of remote host if 445 is found open.
 
+            user@host# python neighbors_parser.py --help
             usage: neighbors_parser.py.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME] [-m MODE]
                         [-l LONGUEUR]
 
@@ -30,7 +35,7 @@ It's able to check a MS17-010 vulnerability on a group of remote host if 445 is 
                                     
 ## Generic usage example
 
-            user@host# python neighbors_parser.py -b -u foo -m letters+digits
+            user@host# python neighbors_parser.py -b -u foo -m letters+digits  
             WARNING: No route found for IPv6 destination :: (no default route?)
             2017-10-03 15:26:56 INFO  [IP] 10.0.2.15
 
