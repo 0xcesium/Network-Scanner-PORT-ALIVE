@@ -6,15 +6,16 @@ __author__='''
 Twitter: @133_cesium
 '''
 __description__='''
-The aim of this is to discover who is online in the neightborhood of the same LAN (at the office for example...)
-And if some known ports are open and in listenning mode, we try to access them the hard way. :)
-That simple.
+The aim of this is to discover who is online in the neightborhood of the same LAN (at the office for example...) of the user.
+Then it checks if some Well Known Ports are open and in listenning mode.
 
 Steps:
 ------
-1st: ARP check on LAN/24
+1st: ARP check on LAN(/24)
 2nd: Discovering sequence (Hostname for example, if shared) and port scan
-3rd: Attacking attempts by BF
+3rd: Attacking attempts by BF upon 22 and 21
+4th: Dowloading web interfaces for further actions upon 80 and 443
+5th: Checking if the host is vulnerable to MS17-010
 
 Version 3:
 ----------
@@ -1023,7 +1024,7 @@ if __name__ == '__main__':
 								smb_response['smb_header']['reserved1'] + \
 								smb_response['smb_header']['error_code']
 					if nt_status == '\x05\x02\x00\xc0':
-						logger.info("\033[33m[_]\033[0m [{}] semble être VULNERABLE à MS17-010! (\033[33m{}\033[0m)".format(host, native_os))
+						logger.info("\033[33m[VULNERABLE]\033[0m [{}] semble être VULNERABLE à MS17-010! (\033[33m{}\033[0m)".format(host, native_os))
 						if args.bruteforce:
 							# P5: trans2_request
 							payload = trans2_request(treeid, processid, userid, multiplex_id)
@@ -1032,7 +1033,7 @@ if __name__ == '__main__':
 							multiplex_id = smb_response['smb_header']['multiplex_id']
 							if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
 								key = calculate_doublepulsar_xor_key(signature)
-								logger.info("\033[33m[_]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
+								logger.info("\033[33m[INFECTED]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
 					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
 						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(ip, native_os))
 					else:
@@ -1047,4 +1048,3 @@ if __name__ == '__main__':
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
-
