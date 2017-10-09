@@ -19,7 +19,7 @@ Steps:
 
 Version 3:
 ----------
-MS17-010 detection now embedded.		
+MS17-010 detection now embedded.
 Many thanks to https://github.com/worawit/MS17-010.
 
 Version 3.5:
@@ -360,7 +360,7 @@ def generate(mode, lgr):
 	elif mode == 'all':
 		len_mode = pow(len(all), int(lgr))
 	else:
-		len_mode = pow(len("l+d"), int(lgr))
+		len_mode = pow(len(letters_digits), int(lgr))
 	try:
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
@@ -422,8 +422,8 @@ def query(port, dst):
 		logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
 		return r.text.encode('utf-8')
 	except Exception as e:
-		logger.error("\033[91m[-]\033[0m Erreur rencontrée lors de la création de la requète {}:{} : {}".format(dst,port,e.strerror))
-		return None
+		logger.info("\033[91m[-]\033[0m Erreur rencontrée lors de la création/envoie d'une requète HTTP/S {}:{} : {}".format(dst,port,e.__class__))
+		return 'No data has been recovered from connection to {}:{}'.format(dst,port)
 
 # SMB part =======================================================================================
 def generate_smb_proto_payload(*protos):
@@ -771,7 +771,7 @@ def checkhost(ip):
 		else:
 			pass
 	except Exception as e:
-		logger.error("\033[91m[-]\033[0m %s.", e.strerror)
+		logger.error("\033[91m[-]\033[0m {}.".format(e.__class__)
 		pass
 
 def network_scan(ip):
@@ -796,7 +796,7 @@ def scanner(target):
 			if pktflags == SYNACK:
 				logger.info('\033[96m[PORT]\033[0m En écoute : \033[33m{}\033[0m sur la cible --> {}'.format(port, target))
 				ports_i.append(port)
-				if port == 22 or port == 2222 or port == 21:
+				if port in (22,222,2222,21):
 					bf_ok = True
 			else:
 				RSTpkt = IP(dst = target)/TCP(sport = srcport, dport = port, flags = "R")
@@ -809,6 +809,16 @@ def scanner(target):
 		except Exception as e:
 			#logger.error("\033[91m[-]\033[0m {}: {}".format(e, target))
 			pass
+
+def port_types(online, port_tab, prot):
+	logger.info("\033[92m[{}]\033[0m".format(prot))
+	for ip in online:
+		stack = []
+		for port in online[ip]:
+			if port in port_tab:
+				stack.append(port)
+		if stack != []:
+			print '{} -> {}'.format(ip,stack)
 
 def port_scan(ip):
 	global ips_o, online
@@ -841,7 +851,11 @@ def port_scan(ip):
 		else:
 			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 		print_fmt('\n\033[92m[*]\033[0m Résumé du scan de ports:')
-		print online
+		port_types(online, [80,8080,8000], 'HTTP')
+		port_types(online, [22,222,2222], 'SSH')
+		port_types(online, [21], 'FTP')
+		port_types(online, [443], 'HTTPS')
+		port_types(online, [445], 'SMB')
 	except KeyboardInterrupt:
 		logger.info('\n\033[93m[*]\033[0m Interruption utilisateur.')
 		sys.exit(-1)
@@ -860,7 +874,7 @@ def get_ip():
 
 # Arguments handler part ===============================================================================
 def get_args():
-	args = ArgumentParser(version='3.8',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='4.0',description='Discovery and attack only, made by Cesium133.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
@@ -957,8 +971,12 @@ if __name__ == '__main__':
 				idx = 0
 # SSH ----------------------------------------------------------------------------------------------------------
 				if 22 in online[host] or 2222 in online[host]:
-					port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 2222]
-					print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
+					try:
+						port_idx = [x for i,x in enumerate(online[host]) if x in (22,222,2222)]
+						print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
+					except Exception as e:
+						logger.info("\033[91m[-]\033[0m Undefined Error: {}".format(e.__class__))
+						continue
 					try:
 						threads = []
 						for psswd in dic:
@@ -1052,3 +1070,4 @@ if __name__ == '__main__':
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
+
