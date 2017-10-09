@@ -19,7 +19,7 @@ Steps:
 
 Version 3:
 ----------
-MS17-010 detection now embedded.
+MS17-010 detection now embedded.		
 Many thanks to https://github.com/worawit/MS17-010.
 
 Version 3.5:
@@ -360,7 +360,7 @@ def generate(mode, lgr):
 	elif mode == 'all':
 		len_mode = pow(len(all), int(lgr))
 	else:
-		len_mode = pow(len(lc_digits), int(lgr))
+		len_mode = pow(len("l+d"), int(lgr))
 	try:
 		while stop != True:
 			psswd = pwd_alpha(lgr, mode)
