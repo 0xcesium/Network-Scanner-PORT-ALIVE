@@ -972,7 +972,7 @@ if __name__ == '__main__':
 # SSH ----------------------------------------------------------------------------------------------------------
 				if 22 in online[host] or 222 in online[host] or 2222 in online[host]:
 					try:
-						port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 222 or x == 2222]]
+						port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 222 or x == 2222]
 						print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
 					except Exception as e:
 						print "\n\033[91m[--SSH--]\033[0m Undefined Error: {} - [\033[33m{}\033[0m]".format(e.__class__,host)
