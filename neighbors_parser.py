@@ -41,7 +41,7 @@ from argparse import ArgumentParser
 from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
-known_ports 	= [21,22,2222,25,80,443,445,8080,8000]
+known_ports 	= [21,22,222,2222,255,255,80,443,445,8080,8000]
 letters_digits  = digits + letters
 all		= digits + letters + punctuation
 online  	= {}
@@ -410,16 +410,20 @@ def ssh_conn(log, addr, passwd, essai, port):
 
 # HTTP / HTTPS part ==============================================================================
 def query(port, dst):
-	if port == 443:
-		url = 'https://{}'.format(dst)
-	else:
-		url = 'http://{}:{}'.format(dst, port)
-	cooki	= {'spip_session':pwd_alpha(16, 'alpha')}
-	token	= {'token':pwd_alpha(16, 'alpha')}
-	headers = {'content-type':'application/json'}
-	r = requests.get(url, headers=headers, verify=False)
-	logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
-	return r.text.encode('utf-8')
+	try:
+		if port == 443:
+			url = 'https://{}'.format(dst)
+		else:
+			url = 'http://{}:{}'.format(dst, port)
+		cooki	= {'spip_session':pwd_alpha(16, 'alpha')}
+		token	= {'token':pwd_alpha(16, 'alpha')}
+		headers = {'content-type':'application/json'}
+		r = requests.get(url, headers=headers, verify=False)
+		logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
+		return r.text.encode('utf-8')
+	except Exception as e:
+		logger.error("\033[91m[-]\033[0m Erreur rencontrée lors de la création de la requète {}:{} : {}".format(dst,port,e.strerror))
+		return None
 
 # SMB part =======================================================================================
 def generate_smb_proto_payload(*protos):
