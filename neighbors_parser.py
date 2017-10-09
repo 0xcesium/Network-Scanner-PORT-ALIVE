@@ -771,7 +771,7 @@ def checkhost(ip):
 		else:
 			pass
 	except Exception as e:
-		logger.error("\033[91m[-]\033[0m {}.".format(e.__class__)
+		logger.error("\033[91m[-]\033[0m {}.".format(e.__class__))
 		pass
 
 def network_scan(ip):
