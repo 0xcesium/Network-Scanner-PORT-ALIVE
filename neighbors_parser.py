@@ -938,14 +938,14 @@ if __name__ == '__main__':
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0], args.longueur[0])
 	elif args.bruteforce:
-		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/2222].'
+		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/222/2222].'
 
 	print_fmt('\n\033[92m[*]\033[0m Phase de capture/reconnaissance brutale:')
 
 	if online is not None:
 		for host in online:
-# FTP ----------------------------------------------------------------------------------------------------------
 			if args.bruteforce and bf_ok:
+# FTP ----------------------------------------------------------------------------------------------------------
 				idx = 0
 				if 21 in online[host]:
 					print "\n\033[33m[FTP]\033[0m Cible avec FTP ouvert : %s." % host
@@ -970,12 +970,12 @@ if __name__ == '__main__':
 						logger.error("\033[91m[-]\033[0m BF FTP.")
 				idx = 0
 # SSH ----------------------------------------------------------------------------------------------------------
-				if 22 in online[host] or 2222 in online[host]:
+				if 22 in online[host] or 222 in online[host] or 2222 in online[host]:
 					try:
-						port_idx = [x for i,x in enumerate(online[host]) if x in (22,222,2222)]
+						port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 222 or x == 2222]]
 						print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
 					except Exception as e:
-						logger.info("\033[91m[-]\033[0m Undefined Error: {}".format(e.__class__))
+						print "\n\033[91m[--SSH--]\033[0m Undefined Error: {} - [\033[33m{}\033[0m]".format(e.__class__,host)
 						continue
 					try:
 						threads = []
@@ -1053,21 +1053,20 @@ if __name__ == '__main__':
 							smb_response = smb_handler(smb_client, payload)
 							signature = smb_response['smb_header']['signature']
 							multiplex_id = smb_response['smb_header']['multiplex_id']
-							if multiplex_id == '\x00\x51' or multiplex_id == '\x51\x00':
+							if multiplex_id in ('\x00\x51','\x51\x00'):
 								key = calculate_doublepulsar_xor_key(signature)
 								logger.info("\033[33m[INFECTED]\033[0m Le poste est INFECTE par DoublePulsar! - XOR Key: {}".format(key))
 					elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
-						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(ip, native_os))
+						logger.info("\033[92m[+]\033[0m [{}] ne semble PAS vulnérable! (\033[33m{}\033[0m)".format(host, native_os))
 					else:
 						logger.info('\033[93m[~]\033[0m Non détecté! (\033[33m{}\033[0m)'.format(native_os))
 					smb_client.close()
 				except socket.error as e:
-					logger.error("\n\033[91m[-]\033[0m Socket error: {} (\033[33m{}\033[0m)".format(e, native_os))
+					logger.error("\n\033[91m[-]\033[0m Socket error: {} (\033[33m{}\033[0m)".format(e.__class__, native_os))
 					smb_client.close()
 				except Exception as e:
-					logger.error("\n\033[91m[-]\033[0m Undefined error: {} (\033[33m{}\033[0m)".format(e, native_os))
+					logger.error("\n\033[91m[-]\033[0m Undefined error: {} (\033[33m{}\033[0m)".format(e.__class__, native_os))
 					smb_client.close()
 		sys.exit('\n\033[91m[+]\033[0m # Job done #\n')
 	else:
 		sys.exit('\033[91m[-]\033[0m Afin de poursuivre l\'analyse, vous devez mentionner un mode (wordlist / mode de bf).')
-
