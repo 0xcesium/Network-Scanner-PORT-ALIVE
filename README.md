@@ -1,9 +1,10 @@
 # Network-Scanner-PORT-ALIVE
 Version 3.8
 
-Dependencies : Scapy
+Dependencies : Scapy, Paramiko
 
             user@host# apt-get install scapy
+            user@host# pip install paramiko
 
 ## Network scanner in Python 2.7 with Scapy using ARP for optimization.
 
@@ -14,7 +15,7 @@ Then, it will activate a search for well-known ports upon those hosts.
 It's able to check a MS17-010 vulnerability on a group of remote host if 445 is found open.
 
             user@host# python neighbors_parser.py --help
-            usage: neighbors_parser.py.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME] [-m MODE]
+            usage: neighbors_parser.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME] [-m MODE]
                         [-l LONGUEUR]
 
             Discovery and attack only, made by Cesium133.
@@ -32,7 +33,7 @@ It's able to check a MS17-010 vulnerability on a group of remote host if 445 is 
                                     letters+digits | hex | all].
               -l LONGUEUR, --longueur LONGUEUR
                                     Longueur des mots de passe souhaitée.
-                                    
+
 ## Generic usage example
 
             user@host# python neighbors_parser.py -b -u foo -m letters+digits  
@@ -88,4 +89,3 @@ It's able to check a MS17-010 vulnerability on a group of remote host if 445 is 
             2017-10-03 15:27:11 INFO  [~] Non détecté! (Windows 7 Professional 7601 Service Pack 1)
 
             [+] # Job done #
-
