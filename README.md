@@ -3,7 +3,7 @@ Version 3.8
 
 Dependencies : Scapy, Paramiko
 
-            user@host# apt-get install scapy
+            user@host# apt-get install python-scapy
             user@host# pip install paramiko
 
 ## Network scanner in Python 2.7 with Scapy using ARP for optimization.
