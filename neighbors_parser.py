@@ -42,8 +42,8 @@ from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
 known_ports 	= [21,22,222,2222,25,80,443,445,8080,8000]
-# [ lower | upper | digits | letters+digits | hex | all ]
-dictionnary	= {'letters+digits':digits + letters,
+# [ lower | upper | digits | alphabet | hex | all ]
+dictionnary	= {'alphabet':digits + letters,
 		  'all':digits + letters + punctuation,
 		  'digits':digits,
 		  'lower':ascii_lowercase,
@@ -884,7 +884,7 @@ def get_args():
 		action='store',
 		nargs=1,
 		default=['lower'],
-		help='Alphabet de bruteforce [ lower | upper | digits | letters+digits | hex | all ].')
+		help='Alphabet de bruteforce [ lower | upper | digits | alphabet | hex | all ].')
 	args.add_argument('-l','--longueur',
 		action='store',
 		nargs=1,
