@@ -876,20 +876,24 @@ def get_args():
 		help='Machine cible.')
 	args.add_argument('-w','--wordlist',
 		action='store',
+		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		help='Ajout d\'un dictionnaire.')
 	args.add_argument('-u','--username',
 		action='store',
+		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		default=['admin'],
 		help='Username distant à BF.')
 	args.add_argument('-m','--mode',
 		action='store',
+		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		default=['lower'],
 		help='Alphabet de bruteforce [ lower | upper | digits | alphabet | hex | all ].')
 	args.add_argument('-l','--longueur',
 		action='store',
+		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		metavar='INTEGER',
 		default=['3'],
