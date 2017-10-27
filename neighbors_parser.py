@@ -867,6 +867,14 @@ def get_args():
 			epilog='GPL(v3) License.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
+		required='-w' in sys.argv or 
+			  '--wordlist' in sys.argv or 
+			  '-u' in sys.argv or 
+			  '--username' in sys.argv or 
+			  '-m' in sys.argv or 
+			  '--mode' in sys.argv or 
+			  '-l' in sys.argv or 
+			  '--longueur' in sys.argv,
 		default=False,
 		help='Argument optionnel pour déclencher le mode attaque.')
 	args.add_argument('-i','--ip',
@@ -876,24 +884,20 @@ def get_args():
 		help='Machine cible.')
 	args.add_argument('-w','--wordlist',
 		action='store',
-		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		help='Ajout d\'un dictionnaire.')
 	args.add_argument('-u','--username',
 		action='store',
-		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		default=['admin'],
 		help='Username distant à BF.')
 	args.add_argument('-m','--mode',
 		action='store',
-		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		default=['lower'],
 		help='Alphabet de bruteforce [ lower | upper | digits | alphabet | hex | all ].')
 	args.add_argument('-l','--longueur',
 		action='store',
-		required='-b' in sys.argv or '--bruteforce' in sys.argv,
 		nargs=1,
 		metavar='INTEGER',
 		default=['3'],
