@@ -1,10 +1,12 @@
 # Network-Scanner-PORT-ALIVE
-Version 3.8
+Version 4.1
 
-Dependencies : Scapy, Paramiko
+Installing project and dependencies : Scapy, Paramiko
 
-            user@host# apt-get install python-scapy
-            user@host# pip install paramiko
+            sudo apt-get install python-scapy
+            pip install paramiko
+            wget -q https://raw.githubusercontent.com/C3s1um133/Network-Scanner-PORT-ALIVE/master/neighbors_parser.py
+            chmod +x neighbors_parser.py
 
 ## Network scanner in Python 2.7 with Scapy using ARP for optimization.
 
@@ -14,7 +16,7 @@ Then, it will activate a search for well-known ports upon those hosts.
 
 It's able to check a MS17-010 vulnerability on a group of remote host if 445 is found open.
 
-            user@host# python neighbors_parser.py --help
+            user@host# ./neighbors_parser.py --help
             usage: neighbors_parser.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME] [-m MODE]
                         [-l LONGUEUR]
 
