@@ -327,13 +327,6 @@ known_hw_constructor = {
 	'(Qolsys Inc.)'						: ['3C:31:78']
 }
 
-logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
-			datefmt='%Y-%m-%d %H:%M:%S',
-			level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-
-
 # BF part ==========================================================================================
 def print_fmt(sentence):
 	lgth = len(sentence)
@@ -367,7 +360,7 @@ def detonate(log, addr, psswd, essai):
 	try:
 		sys.stdout.write('\r\033[96m[*]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + psswd)
 		sys.stdout.flush()
-		connect = trig.connect(addr, 21, 3)
+		connect = trig.connect(addr, 21, 2)
 		ret = trig.login(user=log,passwd=psswd)
 		trig.quit()
 		trig.close()
@@ -389,7 +382,7 @@ def ssh_conn(log, addr, passwd, essai, p_port):
 			password=psswd,
 			timeout=2,
 			port=p_port,
-			look_for_keys=True)
+			look_for_keys=False)
 		print '\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
 		client.close()
 		flag = 1
@@ -902,19 +895,36 @@ def get_args():
 		metavar='INTEGER',
 		default=['3'],
 		help='Longueur des mots de passe souhaitée.')
+	args.add_argument('-d','--debug',
+		action='store_true',
+		default=False,
+		help='Mode Debug pour le suivi de log.')
 	return args.parse_args()
 
 
 # Entry point ==========================================================================================
 if __name__ == '__main__':
 	args = get_args()
+
+	if args.debug:
+		logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
+				datefmt='%Y-%m-%d %H:%M:%S',
+				level=logging.DEBUG)
+	else:
+		logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
+				datefmt='%Y-%m-%d %H:%M:%S',
+				level=logging.INFO)
+		
+	logger = logging.getLogger(__name__)
+	logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+
 	ip = get_ip() if args.ip is None else args.ip[0]
 	logger.info('\033[93m[IP]\033[0m {}'.format(ip))
 #
 #	from multiprocessing import Pool
 #	with open(args.wordlist[0],'r') as dico:
 #		pool = Pool(4)
-#		pool.map(detonate,dico,4)
+#		pool.map_async(detonate,dico,4)
 #
 	ips = network_scan(ip)
 	port_scan(ip)
