@@ -20,8 +20,8 @@ It's able to check a MS17-010 vulnerability on a group of remote host if 445 is 
 
 ```
 user@host# ./neighbors_parser.py --help
-usage: neighbors_parser.py [-h] [-v] [-b] [-i IP] [-w WORDLIST] [-u USERNAME] [-m MODE]
-            [-l LONGUEUR]
+usage: neighbors_parser.py [-h] [-v] [-b] [-i Adresse IP] [-w WORDLIST]
+                           [-u USERNAME] [-m MODE] [-l INTEGER] [-d]
 
 Discovery and attack only, made by Cesium133.
 
@@ -29,15 +29,19 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
   -b, --bruteforce      Argument optionnel pour déclencher le mode attaque.
-  -i IP, --ip IP        Machine cible.
+  -i Adresse IP, --ip Adresse IP
+                        Machine cible.
   -w WORDLIST, --wordlist WORDLIST
                         Ajout d'un dictionnaire.
   -u USERNAME, --username USERNAME
                         Username distant à BF.
-  -m MODE, --mode MODE  Alphabet de bruteforce [lower | upper | digits |
-                        letters+digits | hex | all].
-  -l LONGUEUR, --longueur LONGUEUR
+  -m MODE, --mode MODE  Alphabet de bruteforce [ lower | upper | digits |
+                        alphabet | hex | all ].
+  -l INTEGER, --longueur INTEGER
                         Longueur des mots de passe souhaitée.
+  -d, --debug           Mode Debug pour le suivi de log.
+
+GPL(v3) License.
 ```
 
 ## Generic usage example
