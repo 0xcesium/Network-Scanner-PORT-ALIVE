@@ -47,7 +47,7 @@ GPL(v3) License.
 ## Generic usage example
 
 ```
-user@host# python neighbors_parser.py -b -u foo -m letters+digits  
+user@host# python neighbors_parser.py --bruteforce --username foo --mode alphabet --debug  
 WARNING: No route found for IPv6 destination :: (no default route?)
 2017-10-03 15:26:56 INFO  [IP] 10.0.2.15
 
