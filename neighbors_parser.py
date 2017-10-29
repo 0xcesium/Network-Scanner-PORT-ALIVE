@@ -334,7 +334,7 @@ def print_fmt(sentence):
 
 def pwd_alpha(lgr, length, mode):
 	return ''.join(dictionnary[mode][randint(0,length-1)] for i in range(int(lgr)))
-	
+
 def generate(mode, lgr):
 	stop 	 = False
 	length 	 = len(dictionnary[mode])
@@ -393,6 +393,8 @@ def ssh_conn(log, addr, passwd, essai, p_port):
 def query(port, dst):
 	try:
 		if port == 443:
+			from requests.packages.urllib3.exceptions import InsecureRequestWarning
+                        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 			url = 'https://{}'.format(dst)
 		else:
 			url = 'http://{}:{}'.format(dst, port)
@@ -791,15 +793,19 @@ def scanner(target):
 			#logger.error("\033[91m[-]\033[0m {}: {}".format(e, target))
 			pass
 
-def port_types(online, port_tab, prot):
-	logger.info("\033[92m[{}]\033[0m".format(prot))
-	for ip in online:
-		stack = []
-		for port in online[ip]:
-			if port in port_tab:
-				stack.append(port)
-		if stack != []:
-			print '{} -> {}'.format(ip,stack)
+def port_types(online, port_tab, prot, fout):
+        sentence = "[{}]".format(prot)
+        logger.info("\033[92m{}\033[0m".format(sentence))
+        fout.write(sentence + "\n")
+        for ip in online:
+                stack = []
+                for port in online[ip]:
+                        if port in port_tab:
+                                stack.append(port)
+                if stack != []:
+                        sentence = '{} -> {}'.format(ip,stack)
+                        print sentence
+                        fout.write(sentence + "\n")
 
 def port_scan(ip):
 	global ips_o, online
@@ -832,16 +838,18 @@ def port_scan(ip):
 		else:
 			sys.exit('\n\033[91m[-]\033[0m Aucune IP trouvée sur le réseau.\n')
 		print_fmt('\n\033[92m[*]\033[0m Résumé du scan de ports:')
-		port_types(online, [80,8080,8000], 'HTTP')
-		port_types(online, [22,222,2222], 'SSH')
-		port_types(online, [21], 'FTP')
-		port_types(online, [443], 'HTTPS')
-		port_types(online, [445], 'SMB')
+		with open("parsed_outfile.log","w") as fout:
+                        fout.write("\n========= Neighbors_parser.py outfile log =========\n\n")
+                        port_types(online, [80,8080,8000], 'HTTP', fout)
+                        port_types(online, [22,222,2222], 'SSH', fout)
+                        port_types(online, [21], 'FTP', fout)
+                        port_types(online, [443], 'HTTPS', fout)
+                        port_types(online, [445], 'SMB', fout)
 	except KeyboardInterrupt:
 		logger.info('\n\033[93m[*]\033[0m Interruption utilisateur.')
 		sys.exit(-1)
 	except Exception as e:
-		logger.error('\n\033[92m[-]\033[0m Erreur port_scan({}): \033[31m{}\033[0m'.format(ip, e.__class__))
+		logger.error('\n\033[91m[-]\033[0m Erreur port_scan({}): \033[31m{}\033[0m'.format(ip, e.__class__))
 
 def get_ip():
 	try:
@@ -914,7 +922,7 @@ if __name__ == '__main__':
 		logging.basicConfig(format='%(asctime)s %(levelname)-5s %(message)s',
 				datefmt='%Y-%m-%d %H:%M:%S',
 				level=logging.INFO)
-		
+
 	logger = logging.getLogger(__name__)
 	logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
