@@ -39,7 +39,6 @@ from random import randint
 from threading import Thread
 from pexpect.pxssh import pxssh
 from argparse import ArgumentParser
-from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
 
 known_ports 	= [21,22,222,2222,25,80,443,445,8080,8000]
@@ -376,15 +375,11 @@ def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 	Fails = fails_nb
 	try:
 		client = pxssh()
-#		client = SSHClient()
-#		client.set_missing_host_key_policy(AutoAddPolicy())
 		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + passwd)
 		sys.stdout.flush()
-		client.login(addr, log, passwd)
-#		client.connect(addr, username=log, password=psswd, port=p_port,
-#			timeout=2, look_for_keys=False)
-		print '\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
-		client.close()
+		client.login(server=addr, username=log, password=passwd, login_timeout=3, port=p_port)
+		print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n{}\n'.format(client.before))
+		client.logout()
 		flag = 1
 	except Exception as e:
 		Fails += 1
@@ -401,8 +396,6 @@ def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 def query(port, dst):
 	try:
 		if port == 443:
-			from requests.packages.urllib3.exceptions import InsecureRequestWarning
-                        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 			url = 'https://{}'.format(dst)
 		else:
 			url = 'http://{}:{}'.format(dst, port)
@@ -804,7 +797,7 @@ def scanner(target):
 def port_types(online, port_tab, prot, fout):
         sentence = "[{}]".format(prot)
         logger.info("\033[92m{}\033[0m".format(sentence))
-        fout.write(sentence + "\n")
+        fout.write("\n" + sentence + "\n")
         for ip in online:
                 stack = []
                 for port in online[ip]:
@@ -964,8 +957,8 @@ if __name__ == '__main__':
 			print "\033[92m[*]\033[0m Pour interrompre le processus et poursuivre les tests -> [CTRL+C]\n"
 			dic = generate(args.mode[0].lower(), args.longueur[0])
 	elif args.bruteforce:
-		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/222/2222].'
-
+		print '\n\033[94m[~]\033[0m Pas de ports à bruteforcer [21/22/222/2222].'	
+	
 	print_fmt('\n\033[92m[*]\033[0m Phase de capture/reconnaissance brutale:')
 
 	if online is not None:
