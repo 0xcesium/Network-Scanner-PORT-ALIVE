@@ -1,11 +1,11 @@
 # Network-Scanner-PORT-ALIVE
 Version 4.1
 
-Installing project and dependencies : Scapy, Paramiko
+Installing project and dependencies : Scapy, Pexpect
 
 ```
 sudo apt-get install python-scapy
-pip install paramiko
+pip install pexpect
 wget -q https://raw.githubusercontent.com/C3s1um133/Network-Scanner-PORT-ALIVE/master/neighbors_parser.py
 chmod +x neighbors_parser.py
 ```
