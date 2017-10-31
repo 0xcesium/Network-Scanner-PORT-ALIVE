@@ -377,13 +377,14 @@ def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 	try:
 		sys.stdout.write('\r\033[96m[SSH]\033[0m Essai nb*' + str(essai) + ' sur ' + addr + ' : ' + passwd)
 		sys.stdout.flush()
-		logger.disabled = True
 		client = SSHClient()
 		client.set_missing_host_key_policy(AutoAddPolicy())
 		client.connect(addr, username=log, password=passwd, timeout=4, look_for_keys=False)
-		logger.disabled = False
 		print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n\n')
 		client.close()
+		''' With pxssh() method, a popup is blocking within about 50 attempts the parent process by spawning multiple
+		    graphical frames in order to authentify properly.
+		'''
 		#client = pxssh()
 		#client.login(server=addr, username=log, password=passwd, login_timeout=3, port=p_port)
 		#print_fmt('\n\n\033[91m[SSH]\033[0m SSH YEAH : ' + addr + ' --> ' + psswd + '\n{}\n'.format(client.before))
@@ -393,7 +394,7 @@ def ssh_conn(log, addr, passwd, essai, p_port, fails_nb):
 		Fails += 1
 		if Fails > 5:
 			pass
-		elif 'read_nonblocking' in str(e) or 'banner' in str(e).lower():
+		elif 'read_nonblocking' in str(e) or 'Error reading SSH protocol banner' in str(e).lower():
 			time.sleep(5)
 			ssh_conn(log, addr, passwd, essai, p_port, Fails)
 		elif 'synchronize with original prompt' in str(e):
@@ -1003,6 +1004,7 @@ if __name__ == '__main__':
 					except Exception as e:
 						print "\n\033[91m[--SSH--]\033[0m Undefined Error: {} - [\033[33m{}\033[0m]".format(e.__class__,host)
 						continue
+					logger.disabled = True
 					try:
 						threads = []
 						for psswd in dic:
@@ -1017,10 +1019,13 @@ if __name__ == '__main__':
 							if flag == 1:
 								flag = 0
 								break
+						for thr in threads:
+                                                        thr.join()
 					except KeyboardInterrupt:
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 					except Exception as e:
-						logger.error("\033[91m[-]\033[0m BF SSH --> {}.".format(e.__class__))
+						print_fmt("\033[91m[-]\033[0m BF SSH --> {}.".format(e.__class__))
+				logger.disabled = False
 				idx = 0
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
