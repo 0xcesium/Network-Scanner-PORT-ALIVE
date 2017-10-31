@@ -935,6 +935,7 @@ if __name__ == '__main__':
 
 	logger = logging.getLogger(__name__)
 	logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+	logging.getLogger("paramiko").setLevel(logging.WARNING)
 
 	ip = get_ip() if args.ip is None else args.ip[0]
 	logger.info('\033[93m[IP]\033[0m {}'.format(ip))
@@ -1004,7 +1005,6 @@ if __name__ == '__main__':
 					except Exception as e:
 						print "\n\033[91m[--SSH--]\033[0m Undefined Error: {} - [\033[33m{}\033[0m]".format(e.__class__,host)
 						continue
-					logger.disabled = True
 					try:
 						threads = []
 						for psswd in dic:
@@ -1025,7 +1025,6 @@ if __name__ == '__main__':
 						print '\n\n[*] Nbr d\'essais '+ str(idx)
 					except Exception as e:
 						print_fmt("\033[91m[-]\033[0m BF SSH --> {}.".format(e.__class__))
-				logger.disabled = False
 				idx = 0
 # HTTP ---------------------------------------------------------------------------------------------------------
 			if 80 in online[host] or 8000 in online[host] or 8080 in online[host]:
