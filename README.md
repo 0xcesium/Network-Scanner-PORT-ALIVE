@@ -5,7 +5,8 @@ Installing project and dependencies : Scapy, Pexpect
 
 ```
 sudo apt-get install python-scapy
-pip install pexpect
+#pip install pexpect
+pip install paramiko
 wget -q https://raw.githubusercontent.com/C3s1um133/Network-Scanner-PORT-ALIVE/master/neighbors_parser.py
 chmod +x neighbors_parser.py
 ```
