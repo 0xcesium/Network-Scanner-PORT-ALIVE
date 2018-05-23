@@ -709,7 +709,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 def mac_address_id(line):
 	constructor_id = line[:8]
 	for manufacturer in known_hw_constructor:
-		if constructor_id in known_hw_constructor[manufacturer]:
+		if constructor_id.upper() in known_hw_constructor[manufacturer]:
 			return line + '  ' + manufacturer
 	return line
 
